@@ -1,29 +1,28 @@
 ---
-// Ad Area component - 20% width reserved space for advertisements
+// Ad Area component - Green area (20% width)
 ---
 
 <div class="ad-area" id="adOverlay">
   <button class="close-ad" onclick="document.getElementById('adOverlay').style.display='none'" aria-label="Close Ad">×</button>
-  <div class="ad-placeholder">Ad Overlay<br><small>280×350px</small></div>
+  <div class="ad-placeholder">Ad Area<br><small>20% width</small></div>
 </div>
 
 <style>
-  /* ===== Ad Area (overlay) ===== */
+  /* ===== Ad Area (Green - 20% width) ===== */
   .ad-area {
-    position: absolute;
-    top: 5rem; /* Below the settings button */
-    right: 1rem;
-    width: 280px;
-    height: 350px;
-    background: color-mix(in srgb, var(--table-bg) 85%, transparent);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    width: 20%;
+    height: 100%;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 3; /* Below settings button but above game elements */
+    z-index: 3;
     box-sizing: border-box;
+    margin: 0.5rem;
   }
 
   .ad-placeholder {

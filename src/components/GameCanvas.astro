@@ -1,0 +1,76 @@
+---
+// Game Canvas component - Red area for game rendering (80% width, viewport height - 6rem)
+---
+
+<div class="game-canvas">
+  <div class="stage" id="stage">
+    <!-- Game engine will be mounted here -->
+  </div>
+  
+  <!-- Edge menu button -->
+  <button id="edgeMenuBtn" class="edge-menu" type="button" aria-haspopup="dialog" aria-controls="menuDlg" aria-label="Menu">⋯</button>
+  
+  <!-- Pause overlay -->
+  <div id="pauseOverlay" class="overlay" aria-live="polite">Paused</div>
+</div>
+
+<style>
+  /* ===== Game Canvas (Red - 80% width, viewport height - 6rem) ===== */
+  .game-canvas {
+    position: relative;
+    width: 80%;
+    height: calc(100vh - 6rem);
+    background: transparent;
+    overflow: hidden;
+  }
+
+  .stage { 
+    width: 100%;
+    height: 100%;
+    display: grid; 
+    place-items: center; 
+    color: #c8cdd4; 
+    background: var(--table-bg);
+  }
+  
+  .stage .label { 
+    font-size: 14px; 
+    color: #9aa3ad; 
+  }
+
+  /* Edge menu button */
+  .edge-menu { 
+    position: absolute; 
+    right: 12px; 
+    bottom: 12px; 
+    width: 36px; 
+    height: 36px; 
+    border-radius: 6px; 
+    border: 1px solid #3a3f46; 
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent); 
+    color: #e6e7eb; 
+    cursor: pointer;
+    z-index: 5;
+  }
+  
+  .edge-menu:focus-visible { 
+    outline: 2px solid #fff; 
+    outline-offset: 2px; 
+  }
+
+  .overlay { 
+    position: absolute; 
+    inset: 0; 
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    color: #e6e7eb; 
+    background: color-mix(in srgb, var(--table-bg) 85%, transparent); 
+    font-weight: 700;
+    z-index: 10;
+  }
+  
+  .overlay.show { 
+    display: flex; 
+  }
+</style>

@@ -1,0 +1,242 @@
+---
+// Gamesurface Header component - Yellow area with dropdown, HUD elements, settings button
+---
+
+<header class="gamesurface-header">
+  <!-- HUD elements -->
+  <div class="hud tl" id="hudMoves">Moves 0</div>
+  <div class="hud tl2" id="hudScore">Score 0</div>
+  <div class="hud tr2" id="hudStock">Stock 24</div>
+  <div class="hud tr" id="hudTime">00:00</div>
+
+  <!-- Game switcher dropdown (top-left) -->
+  <div class="game-switcher">
+    <button id="gameSwitcherBtn" class="switcher-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="gameSwitcherMenu" title="Switch game">
+      Solitaire <span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div id="gameSwitcherMenu" class="switcher-menu" role="listbox" aria-label="Switch game" hidden>
+      <div class="menu-head">
+        <input id="gsSearch" type="search" placeholder="Search games" aria-label="Search games" />
+      </div>
+      <div class="menu-section" aria-labelledby="gsRecentH">
+        <div class="menu-title" id="gsRecentH">Recent</div>
+        <div id="gsRecent" class="options"></div>
+      </div>
+      <div class="menu-section" aria-labelledby="gsPinnedH">
+        <div class="menu-title" id="gsPinnedH">Pinned</div>
+        <div id="gsPinned" class="options"></div>
+      </div>
+      <div class="menu-section" aria-labelledby="gsAllH">
+        <div class="menu-title" id="gsAllH">All games</div>
+        <div id="gsAll" class="options"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Button (top-right) -->
+  <button id="vpSettingsBtn" class="settings-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
+</header>
+
+<style>
+  /* ===== Gamesurface Header (Yellow - 3rem height) ===== */
+  .gamesurface-header {
+    position: relative;
+    height: 3rem;
+    width: 100%;
+    background: transparent;
+    z-index: 10;
+  }
+
+  /* HUD badges */
+  .hud { 
+    position: absolute; 
+    font-size: 13px; 
+    color: #e6e7eb; 
+    background: color-mix(in srgb, var(--table-bg) 75%, transparent); 
+    border: 1px solid rgba(0,0,0,.35); 
+    border-radius: 4px; 
+    padding: 4px 6px;
+    top: 8px;
+    z-index: 15;
+  }
+  .hud.tl { left: 50%; transform: translateX(-220px); }
+  .hud.tl2 { left: 50%; transform: translateX(-120px); }
+  .hud.tr2 { left: 50%; transform: translateX(20px); }
+  .hud.tr { left: 50%; transform: translateX(120px); }
+
+  /* ===== Game Switcher (top-left) ===== */
+  .game-switcher {
+    position: absolute;
+    top: 0.5rem;
+    left: 1rem;
+    z-index: 20;
+  }
+
+  .switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    min-width: 120px;
+  }
+
+  .switcher-btn:hover {
+    background: color-mix(in srgb, var(--table-bg) 80%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .switcher-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .chev {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+  }
+
+  .switcher-btn[aria-expanded="true"] .chev {
+    transform: rotate(180deg);
+  }
+
+  .switcher-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    width: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: color-mix(in srgb, var(--table-bg) 90%, #000);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    z-index: 30;
+  }
+
+  .menu-head {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .menu-head input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: #e6e7eb;
+    font-size: 14px;
+  }
+
+  .menu-section {
+    padding: 8px 0;
+  }
+
+  .menu-title {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #9aa3ad;
+    text-transform: uppercase;
+  }
+
+  .options {
+    /* Game options will be populated by JavaScript */
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.15s ease;
+  }
+
+  .option:hover,
+  .option:focus {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+
+  .option:last-child {
+    border-bottom: none;
+  }
+
+  .option .text {
+    flex: 1;
+  }
+
+  .option .title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e6e7eb;
+    margin-bottom: 2px;
+  }
+
+  .option .meta {
+    font-size: 12px;
+    color: #9aa3ad;
+  }
+
+  .pinbtn {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: transparent;
+    color: #9aa3ad;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+
+  .pinbtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e6e7eb;
+  }
+
+  .pinbtn[aria-pressed="true"] {
+    background: rgba(26, 115, 232, 0.3);
+    border-color: rgba(26, 115, 232, 0.5);
+    color: #6aa1ff;
+  }
+
+  /* ===== Settings Button (top-right) ===== */
+  .settings-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    z-index: 15;
+  }
+
+  .settings-btn:hover {
+    background: color-mix(in srgb, var(--table-bg) 30%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .settings-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+</style>
