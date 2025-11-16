@@ -930,27 +930,30 @@ import Footer from '../components/Footer.astro';
         // Create fake game interface
         gameEngineMount.innerHTML = `
           <div style="
-            padding: 40px;
+            padding: 20px;
             text-align: center;
             height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
           ">
             <div style="
-              font-size: 24px;
+              font-size: 20px;
               font-weight: bold;
               color: #e6e7eb;
-              margin-bottom: 10px;
+              margin-bottom: 8px;
             ">
               🎮 Klondike Solitaire
             </div>
             
             <div style="
-              font-size: 14px;
+              font-size: 12px;
               color: #9aa3ad;
-              margin-bottom: 20px;
-              line-height: 1.4;
+              margin-bottom: 16px;
+              line-height: 1.3;
             ">
               Fake game for testing shell integration<br>
               Click buttons below to simulate game actions
@@ -958,44 +961,44 @@ import Footer from '../components/Footer.astro';
 
             <div style="
               display: grid;
-              grid-template-columns: repeat(4, 60px);
-              gap: 10px;
-              margin-bottom: 20px;
+              grid-template-columns: repeat(4, 50px);
+              gap: 8px;
+              margin-bottom: 16px;
               justify-content: center;
             ">
-              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♠️</div>
-              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♥️</div>
-              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♦️</div>
-              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♣️</div>
+              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♠️</div>
+              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♥️</div>
+              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♦️</div>
+              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♣️</div>
             </div>
 
             <div style="
               display: flex;
-              gap: 12px;
+              gap: 10px;
               flex-wrap: wrap;
               justify-content: center;
             ">
               <button id="fakeMove" style="
-                padding: 8px 16px;
+                padding: 6px 12px;
                 border: 1px solid rgba(76, 175, 80, 0.5);
-                border-radius: 6px;
+                border-radius: 4px;
                 background: rgba(76, 175, 80, 0.2);
                 color: #4CAF50;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: 500;
               ">
-                Make Move (+10 pts)
+                Make Move (+10)
               </button>
               
               <button id="fakeWin" style="
-                padding: 8px 16px;
+                padding: 6px 12px;
                 border: 1px solid rgba(255, 193, 7, 0.5);
-                border-radius: 6px;
+                border-radius: 4px;
                 background: rgba(255, 193, 7, 0.2);
                 color: #FFC107;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: 500;
               ">
                 Trigger Win

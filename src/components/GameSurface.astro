@@ -189,14 +189,18 @@ import AdArea from './AdArea.astro';
     height: 100%;
     position: relative;
     padding-top: 60px; /* Account for header */
+    padding-bottom: 80px; /* Reserve space for bottom controls */
+    box-sizing: border-box;
   }
 
   .stage { 
-    aspect-ratio: 16 / 9; 
-    width: 100%; 
+    width: 100%;
+    height: 100%;
+    max-height: calc(100vh - 200px); /* Constrain height to viewport minus header/controls space */
     display: grid; 
     place-items: center; 
-    color: #c8cdd4; 
+    color: #c8cdd4;
+    box-sizing: border-box;
   }
   .stage .label { 
     font-size: 14px; 
@@ -230,12 +234,13 @@ import AdArea from './AdArea.astro';
     background: color-mix(in srgb, var(--table-bg) 75%, transparent); 
     border:1px solid rgba(0,0,0,.35); 
     border-radius:4px; 
-    padding:4px 6px; 
+    padding:4px 6px;
+    z-index: 10; /* Ensure HUD appears above game content */
   }
-  .hud.tl { top:8px; left:50%; transform: translateX(-220px); }
-  .hud.tl2 { top:8px; left:50%; transform: translateX(-120px); }
-  .hud.tr2 { top:8px; left:50%; transform: translateX(20px); }
-  .hud.tr { top:8px; left:50%; transform: translateX(120px); }
+  .hud.tl { top:68px; left:50%; transform: translateX(-220px); } /* Moved below header */
+  .hud.tl2 { top:68px; left:50%; transform: translateX(-120px); }
+  .hud.tr2 { top:68px; left:50%; transform: translateX(20px); }
+  .hud.tr { top:68px; left:50%; transform: translateX(120px); }
   .hud.bl { bottom:8px; left:8px; }
   .hud.br { bottom:8px; right:8px; }
 
@@ -334,7 +339,7 @@ import AdArea from './AdArea.astro';
   /* ===== Game Switcher (top-left) ===== */
   .game-switcher {
     position: absolute;
-    top: 1rem;
+    top: 76px; /* Position below header area */
     left: 1rem;
     z-index: 10;
   }
@@ -480,7 +485,7 @@ import AdArea from './AdArea.astro';
   /* ===== Settings Button (top-right) ===== */
   .settings-btn {
     position: absolute;
-    top: 1rem;
+    top: 76px; /* Position below header area */
     right: 1rem;
     width: 3rem;
     height: 3rem;
@@ -510,7 +515,7 @@ import AdArea from './AdArea.astro';
   /* ===== Sign Up Button (next to settings) ===== */
   .signup-btn {
     position: absolute;
-    top: 1rem;
+    top: 76px; /* Position below header area */
     right: 5rem; /* Position to the left of settings button */
     padding: 8px 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);
