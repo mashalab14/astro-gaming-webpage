@@ -1,0 +1,204 @@
+---
+// Header component with game switcher
+---
+
+<header class="site">
+  <div class="container topbar">
+    <div class="switcher">
+      <button id="gameSwitcherBtn" class="brand switcher-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="gameSwitcherMenu" title="Switch game">
+        Solitaire <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div id="gameSwitcherMenu" class="switcher-menu" role="listbox" aria-label="Switch game" hidden>
+        <div class="menu-head">
+          <input id="gsSearch" type="search" placeholder="Search games" aria-label="Search games" />
+        </div>
+        <div class="menu-section" aria-labelledby="gsRecentH">
+          <div class="menu-title" id="gsRecentH">Recent</div>
+          <div id="gsRecent" class="options"></div>
+        </div>
+        <div class="menu-section" aria-labelledby="gsPinnedH">
+          <div class="menu-title" id="gsPinnedH">Pinned</div>
+          <div id="gsPinned" class="options"></div>
+        </div>
+        <div class="menu-section" aria-labelledby="gsAllH">
+          <div class="menu-title" id="gsAllH">All games</div>
+          <div id="gsAll" class="options"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button id="vpSettingsBtn" class="settings-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
+    </div>
+  </div>
+</header>
+
+<style>
+  /* ===== Header ===== */
+  header.site { 
+    position: relative;
+    background: var(--table-bg); 
+    border: none;
+    border-radius: 0;
+    height: 3.5rem;
+  }
+  header.site::before { 
+    content:""; 
+    position:absolute; 
+    inset:0; 
+    pointer-events:none; 
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
+  }
+  header.site::after { 
+    content:""; 
+    position:absolute; 
+    inset:0; 
+    pointer-events:none; 
+    background-image:
+      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
+      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
+      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 2px 2px; 
+    opacity:.5; 
+  }
+  .topbar { 
+    position: relative;
+    z-index: 1;
+    display: grid; 
+    grid-template-columns: auto 1fr auto; 
+    gap: 12px; 
+    align-items: center; 
+    height: 100%; 
+  }
+  .container { 
+    max-width: 1280px; 
+    margin: 0 auto; 
+    padding: 0 16px; 
+  }
+  .brand { 
+    font-weight: 700; 
+    letter-spacing: .1px; 
+    color: var(--text); 
+  }
+  .actions { 
+    display: flex; 
+    gap: 10px; 
+    align-items: center; 
+  }
+  
+  /* ===== Settings button ===== */
+  .settings-btn { 
+    position: relative;
+    width: 3rem; 
+    height: 3rem; 
+    border-radius: 0; 
+    border: 0px; 
+    background: transparent; 
+    color: #e6e7eb; 
+    cursor: pointer; 
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .settings-btn:focus-visible { 
+    outline: 2px solid var(--link); 
+    outline-offset: 2px; 
+  }
+  
+  /* ===== Game switcher styles ===== */
+  .switcher { 
+    position: relative; 
+  }
+  .switcher-btn { 
+    all: unset; 
+    cursor: pointer; 
+    font-weight: 700; 
+    font-size: 18px; 
+    color: var(--text); 
+    display: inline-flex; 
+    align-items: center; 
+  }
+  .switcher-btn .chev { 
+    margin-left: 4px; 
+    font-size: 12px; 
+    color: var(--muted); 
+  }
+  .switcher-btn:focus-visible { 
+    outline: 2px solid var(--link); 
+    outline-offset: 2px; 
+  }
+  .switcher-menu { 
+    position: absolute; 
+    top: 48px; 
+    left: 0; 
+    width: min(560px, calc(100vw - 32px)); 
+    max-height: 60vh; 
+    overflow: auto; 
+    border: 1px solid var(--border); 
+    border-radius: var(--radius); 
+    background: var(--bg); 
+    padding: 8px; 
+  }
+  .menu-head { 
+    padding: 4px 4px 8px; 
+    border-bottom: 1px solid var(--border); 
+  }
+  .menu-head input { 
+    width: 100%; 
+    height: 32px; 
+    padding: 0 8px; 
+    border: 1px solid var(--border); 
+    border-radius: var(--radius); 
+    background: var(--surface); 
+    color: var(--text); 
+  }
+  .menu-section { 
+    padding: 8px 4px; 
+  }
+  .menu-title { 
+    font-size: 12px; 
+    color: var(--muted); 
+    text-transform: uppercase; 
+    letter-spacing: .4px; 
+    margin: 4px 0; 
+  }
+  .options { 
+    display: grid; 
+    gap: 4px; 
+  }
+  .option { 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 8px; 
+    padding: 6px 8px; 
+    border-radius: var(--radius); 
+    border: 1px solid transparent; 
+  }
+  .option:hover { 
+    background: var(--surface); 
+  }
+  .option:focus-visible, 
+  .option[aria-selected="true"] { 
+    outline: 2px solid var(--link); 
+    outline-offset: 0; 
+  }
+  .option .title { 
+    font-size: 14px; 
+  }
+  .option .meta { 
+    font-size: 12px; 
+    color: var(--muted); 
+  }
+  .pinbtn { 
+    height: 24px; 
+    padding: 0 6px; 
+    border: 1px solid var(--border); 
+    background: transparent; 
+    color: var(--text); 
+    border-radius: var(--radius); 
+    cursor: pointer; 
+    font-size: 13px; 
+  }
+</style>

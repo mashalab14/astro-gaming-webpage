@@ -1,0 +1,477 @@
+---
+// Game Surface component - main game viewport with controls
+import AdArea from './AdArea.astro';
+---
+
+<section class="viewport" id="game" aria-label="Game viewport" role="region">
+  <!-- Game Area (80% width) -->
+  <div class="game-area">
+    <div class="stage" id="stage">
+      <div>
+        <div style="text-align:center; font-size:36px; font-weight:800; color:#e6e7eb;">GAME</div>
+        <div class="label">Embed canvas/WebGL/WASM or iframe here</div>
+      </div>
+    </div>
+    <div class="hud tl" id="hudMoves">Moves 0</div>
+    <div class="hud tl2" id="hudScore">Score 0</div>
+    <div class="hud tr2" id="hudStock">Stock 24</div>
+    <div class="hud tr" id="hudTime">00:00</div>
+    <button id="edgeMenuBtn" class="edge-menu" type="button" aria-haspopup="dialog" aria-controls="menuDlg" aria-label="Menu">⋯</button>
+
+    <!-- Game switcher dropdown (top-left) -->
+    <div class="game-switcher">
+      <button id="gameSwitcherBtn" class="switcher-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="gameSwitcherMenu" title="Switch game">
+        Solitaire <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div id="gameSwitcherMenu" class="switcher-menu" role="listbox" aria-label="Switch game" hidden>
+        <div class="menu-head">
+          <input id="gsSearch" type="search" placeholder="Search games" aria-label="Search games" />
+        </div>
+        <div class="menu-section" aria-labelledby="gsRecentH">
+          <div class="menu-title" id="gsRecentH">Recent</div>
+          <div id="gsRecent" class="options"></div>
+        </div>
+        <div class="menu-section" aria-labelledby="gsPinnedH">
+          <div class="menu-title" id="gsPinnedH">Pinned</div>
+          <div id="gsPinned" class="options"></div>
+        </div>
+        <div class="menu-section" aria-labelledby="gsAllH">
+          <div class="menu-title" id="gsAllH">All games</div>
+          <div id="gsAll" class="options"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Button (top-right) -->
+    <button id="vpSettingsBtn" class="settings-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
+
+    <!-- Sign Up Button (commented out) -->
+    <!-- <button id="signUpBtn" class="signup-btn" type="button" aria-label="Sign Up" title="Sign Up">Sign Up</button> -->
+
+    <!-- Game Controls (bottom-left) -->
+    <div class="game-controls">
+      <button id="undoBtn" class="control-btn" type="button" aria-label="Undo">Undo</button>
+      <button id="hintBtn" class="control-btn" type="button" aria-label="Hint">Hint</button>
+      <button id="newDealBtn" class="control-btn" type="button" aria-label="New Deal">New Deal</button>
+      <button id="rulesBtn" class="control-btn" type="button" aria-label="Rules">Rules</button>
+      <div class="language-dropdown">
+        <select id="languageSelect" class="language-select" aria-label="Select Language">
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="it">Italiano</option>
+          <option value="pt">Português</option>
+          <option value="nl">Nederlands</option>
+          <option value="sv">Svenska</option>
+          <option value="da">Dansk</option>
+          <option value="no">Norsk</option>
+          <option value="fi">Suomi</option>
+          <option value="pl">Polski</option>
+          <option value="cs">Čeština</option>
+          <option value="hu">Magyar</option>
+          <option value="ro">Română</option>
+          <option value="bg">Български</option>
+          <option value="hr">Hrvatski</option>
+          <option value="sr">Srpski</option>
+          <option value="sl">Slovenščina</option>
+          <option value="sk">Slovenčina</option>
+          <option value="et">Eesti</option>
+          <option value="lv">Latviešu</option>
+          <option value="lt">Lietuvių</option>
+          <option value="el">Ελληνικά</option>
+          <option value="ru">Русский</option>
+          <option value="uk">Українська</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+      <button id="moreBtn" class="control-btn" type="button" aria-label="More">More</button>
+    </div>
+
+    <div id="pauseOverlay" class="overlay" aria-live="polite">Paused</div>
+  </div>
+
+  <!-- Ad Area (overlay) -->
+  <AdArea />
+</section>
+
+<style>
+  /* ===== Game viewport ===== */
+  .viewport { 
+    position: relative; 
+    background: var(--table-bg); 
+    border: none; 
+    border-radius: 0; 
+    height: 100vh; 
+    width: 100%; 
+  }
+  .viewport::before { 
+    content:""; 
+    position:absolute; 
+    inset:0; 
+    pointer-events:none; 
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
+  }
+  .viewport::after { 
+    content:""; 
+    position:absolute; 
+    inset:0; 
+    pointer-events:none; 
+    background-image:
+      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
+      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
+      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 2px 2px; 
+    opacity:.5; 
+  }
+  /* ===== Game Area (full width) ===== */
+  .game-area {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .stage { 
+    aspect-ratio: 16 / 9; 
+    width: 100%; 
+    display: grid; 
+    place-items: center; 
+    color: #c8cdd4; 
+  }
+  .stage .label { 
+    font-size: 14px; 
+    color: #9aa3ad; 
+  }
+
+  /* Edge menu button */
+  .edge-menu { 
+    position:absolute; 
+    right:12px; 
+    bottom:12px; 
+    width:36px; 
+    height:36px; 
+    border-radius:6px; 
+    border:1px solid #3a3f46; 
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent); 
+    color:#e6e7eb; 
+    cursor:pointer; 
+  }
+  .edge-menu:focus-visible { 
+    outline: 2px solid #fff; 
+    outline-offset: 2px; 
+  }
+
+
+  /* HUD badges */
+  .hud { 
+    position:absolute; 
+    font-size:13px; 
+    color:#e6e7eb; 
+    background: color-mix(in srgb, var(--table-bg) 75%, transparent); 
+    border:1px solid rgba(0,0,0,.35); 
+    border-radius:4px; 
+    padding:4px 6px; 
+  }
+  .hud.tl { top:8px; left:50%; transform: translateX(-220px); }
+  .hud.tl2 { top:8px; left:50%; transform: translateX(-120px); }
+  .hud.tr2 { top:8px; left:50%; transform: translateX(20px); }
+  .hud.tr { top:8px; left:50%; transform: translateX(120px); }
+  .hud.bl { bottom:8px; left:8px; }
+  .hud.br { bottom:8px; right:8px; }
+
+  .overlay { 
+    position: absolute; 
+    inset: 0; 
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    color: #e6e7eb; 
+    background: color-mix(in srgb, var(--table-bg) 85%, transparent); 
+    font-weight: 700; 
+  }
+  .overlay.show { 
+    display: flex; 
+  }
+
+  /* ===== Game Control Buttons ===== */
+  .game-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    gap: 12px;
+    z-index: 5;
+  }
+  
+  .control-btn {
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 80px;
+    backdrop-filter: blur(4px);
+  }
+  
+  .control-btn:hover {
+    background: color-mix(in srgb, var(--table-bg) 80%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .control-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  
+  .control-btn:active {
+    transform: translateY(1px);
+  }
+
+  /* ===== Language Dropdown ===== */
+  .language-dropdown {
+    display: flex;
+    align-items: center;
+  }
+
+  .language-select {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 120px;
+    backdrop-filter: blur(4px);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23e6e7eb' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 32px;
+  }
+
+  .language-select:hover {
+    background-color: color-mix(in srgb, var(--table-bg) 80%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .language-select:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .language-select option {
+    background: color-mix(in srgb, var(--table-bg) 90%, #000);
+    color: #e6e7eb;
+    padding: 8px 12px;
+  }
+
+  /* ===== Game Switcher (top-left) ===== */
+  .game-switcher {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 10;
+  }
+
+  .switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    min-width: 120px;
+  }
+
+  .switcher-btn:hover {
+    background: color-mix(in srgb, var(--table-bg) 80%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .switcher-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .chev {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+  }
+
+  .switcher-btn[aria-expanded="true"] .chev {
+    transform: rotate(180deg);
+  }
+
+  .switcher-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    width: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: color-mix(in srgb, var(--table-bg) 90%, #000);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    z-index: 20;
+  }
+
+  .menu-head {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .menu-head input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: #e6e7eb;
+    font-size: 14px;
+  }
+
+  .menu-section {
+    padding: 8px 0;
+  }
+
+  .menu-title {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #9aa3ad;
+    text-transform: uppercase;
+  }
+
+  .options {
+    /* Game options will be populated by JavaScript */
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.15s ease;
+  }
+
+  .option:hover,
+  .option:focus {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+
+  .option:last-child {
+    border-bottom: none;
+  }
+
+  .option .text {
+    flex: 1;
+  }
+
+  .option .title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e6e7eb;
+    margin-bottom: 2px;
+  }
+
+  .option .meta {
+    font-size: 12px;
+    color: #9aa3ad;
+  }
+
+  .pinbtn {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: transparent;
+    color: #9aa3ad;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+
+  .pinbtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e6e7eb;
+  }
+
+  .pinbtn[aria-pressed="true"] {
+    background: rgba(26, 115, 232, 0.3);
+    border-color: rgba(26, 115, 232, 0.5);
+    color: #6aa1ff;
+  }
+
+  /* ===== Settings Button (top-right) ===== */
+  .settings-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 3rem;
+    height: 3rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    z-index: 5;
+  }
+
+  .settings-btn:hover {
+    background: color-mix(in srgb, var(--table-bg) 30%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .settings-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  /* ===== Sign Up Button (next to settings) ===== */
+  .signup-btn {
+    position: absolute;
+    top: 1rem;
+    right: 5rem; /* Position to the left of settings button */
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
+    color: #e6e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+    z-index: 5;
+  }
+
+  .signup-btn:hover {
+    background: color-mix(in srgb, var(--table-bg) 80%, transparent);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .signup-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+</style>
