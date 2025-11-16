@@ -4,14 +4,14 @@
 
 <div class="ad-area" id="adOverlay">
   <button class="close-ad" onclick="document.getElementById('adOverlay').style.display='none'" aria-label="Close Ad">×</button>
-  <div class="ad-placeholder">Ad Area<br><small>20% width</small></div>
+  <div class="ad-placeholder">Ad Area<br><small>30% width</small></div>
 </div>
 
 <style>
-  /* ===== Ad Area (Green - 20% width) ===== */
+  /* ===== Ad Area (Green - 30% width via flex) ===== */
   .ad-area {
     position: relative;
-    width: 20%;
+    flex: 3;
     height: 100%;
     background: var(--table-bg);
     border: 1px solid rgba(255, 255, 255, 0.1);

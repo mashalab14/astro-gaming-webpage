@@ -768,10 +768,13 @@ import Footer from '../components/Footer.astro';
           pauseOverlay.classList.add('show');
         }
         
-        // Update button state
+        // Update button state to show current time and play symbol
         const pausePlayBtn = document.getElementById('pausePlayBtn');
         if (pausePlayBtn) {
-          pausePlayBtn.textContent = '▶';
+          const minutes = Math.floor(gameTimer.elapsed / 60);
+          const seconds = gameTimer.elapsed % 60;
+          const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+          pausePlayBtn.innerHTML = `▶ ${timeStr}`;
           pausePlayBtn.setAttribute('aria-label', 'Play');
           pausePlayBtn.setAttribute('title', 'Play');
         }
@@ -786,12 +789,13 @@ import Footer from '../components/Footer.astro';
           pauseOverlay.classList.remove('show');
         }
         
-        // Update button state
+        // Update button state - the timer will update the display
         const pausePlayBtn = document.getElementById('pausePlayBtn');
         if (pausePlayBtn) {
-          pausePlayBtn.textContent = '⏸';
           pausePlayBtn.setAttribute('aria-label', 'Pause');
           pausePlayBtn.setAttribute('title', 'Pause');
+          // Let updateTimerDisplay handle the content
+          updateTimerDisplay();
         }
       }
 
@@ -842,9 +846,6 @@ import Footer from '../components/Footer.astro';
       });
       openSettingsBtn?.addEventListener('click', () => { closeMenu(); markSelected(currentBg()); if (typeof settingsDlg.showModal === 'function') settingsDlg.showModal(); else settingsDlg.setAttribute('open',''); });
 
-      // Start/resume on first pointer in the game engine mount
-      gameEngineMount?.addEventListener('pointerdown', () => { resumeGame(); });
-
       // ===== GAME ENGINE INTEGRATION =====
       
       let gameEngine = {
@@ -868,20 +869,15 @@ import Footer from '../components/Footer.astro';
       
       function startTimer() {
         if (gameTimer.isRunning) return;
-        gameTimer.startTime = Date.now();
+        gameTimer.startTime = Date.now() - (gameTimer.elapsed * 1000); // Account for previous elapsed time
         gameTimer.isRunning = true;
         gameTimer.interval = setInterval(() => {
           gameTimer.elapsed = Math.floor((Date.now() - gameTimer.startTime) / 1000);
           updateTimerDisplay();
         }, 1000);
         
-        // Update pause/play button to show pause state
-        const pausePlayBtn = document.getElementById('pausePlayBtn');
-        if (pausePlayBtn) {
-          pausePlayBtn.textContent = '⏸';
-          pausePlayBtn.setAttribute('aria-label', 'Pause');
-          pausePlayBtn.setAttribute('title', 'Pause');
-        }
+        // Update display immediately
+        updateTimerDisplay();
       }
       
       function stopTimer() {
@@ -904,7 +900,13 @@ import Footer from '../components/Footer.astro';
         const seconds = gameTimer.elapsed % 60;
         const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         const pausePlayBtn = document.getElementById('pausePlayBtn');
-        if (pausePlayBtn) pausePlayBtn.textContent = timeStr;
+        if (pausePlayBtn) {
+          if (gameTimer.isRunning) {
+            pausePlayBtn.innerHTML = `⏸ ${timeStr}`;
+          } else {
+            pausePlayBtn.innerHTML = `▶ ${timeStr}`;
+          }
+        }
       }
       
       // Shell callbacks for game engine
@@ -1204,24 +1206,13 @@ import Footer from '../components/Footer.astro';
         }
       });
       
-      // Pause overlay click to resume
-      const pauseOverlayEl = document.getElementById('pauseOverlay');
-      pauseOverlayEl?.addEventListener('click', () => {
-        resumeGame();
-      });
-
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
         const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
         if (e.key === 'Escape') { e.preventDefault(); menuDlg.open ? closeMenu() : showMenu(); }
         else if (e.key.toLowerCase() === 'p') { e.preventDefault(); gameTimer.isRunning ? pauseGame() : resumeGame(); }
-        else if (e.key.toLowerCase() === 'r') { e.preventDefault(); resumeGame(); }
-        else if (e.key === ' ') { e.preventDefault(); resumeGame(); }
       });
-
-      // Auto-pause on focus loss
-      window.addEventListener('blur', () => { if (gameTimer.isRunning) { pauseGame(); } });
 
       // ===== Game Switcher logic =====
       const switcherBtn = document.getElementById('gameSwitcherBtn');

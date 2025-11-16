@@ -38,6 +38,30 @@ import PauseOverlay from './PauseOverlay.astro';
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    background: var(--table-bg);
+  }
+  
+  .viewport::before { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
+    z-index: 2;
+  }
+  
+  .viewport::after { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background-image:
+      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
+      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
+      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 2px 2px; 
+    opacity: .5;
+    z-index: 2;
   }
 
   /* ===== Main content area (middle section) ===== */
@@ -46,14 +70,5 @@ import PauseOverlay from './PauseOverlay.astro';
     flex: 1;
     min-height: 0; /* Allow flex shrinking */
     position: relative;
-  }
-
-  /* Adjusting widths for AdArea and GameCanvas */
-  GameCanvas {
-    flex: 7;
-  }
-
-  AdArea {
-    flex: 3;
   }
 </style>
