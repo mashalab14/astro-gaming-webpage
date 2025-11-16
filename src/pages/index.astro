@@ -2,6 +2,7 @@
 // Sample Game - Astro implementation
 import Header from '../components/Header.astro';
 import GameSurface from '../components/GameSurface.astro';
+import WinModal from '../components/WinModal.astro';
 import HowToPlay from '../components/HowToPlay.astro';
 import Strategies from '../components/Strategies.astro';
 import FAQ from '../components/FAQ.astro';
@@ -297,6 +298,9 @@ import Footer from '../components/Footer.astro';
   </main>
 
   <Footer />
+
+  <!-- Win Modal -->
+  <WinModal />
 
   <!-- Settings dialog -->
   <dialog id="settingsDlg" class="settings" aria-labelledby="settingsTitle">
@@ -778,64 +782,387 @@ import Footer from '../components/Footer.astro';
       // Start/resume on first pointer in the game engine mount
       gameEngineMount?.addEventListener('pointerdown', () => { resumeGame(); });
 
-      // ===== GAME ENGINE INTEGRATION FRAMEWORK =====
-      /*
-       * Future game engines should implement this standardized interface:
-       * 
-       * const gameEngine = {
-       *   mount(rootElement, options) {
-       *     // Initialize game in the provided container
-       *     // options: { autoplay, animationSpeed, soundEnabled, etc. }
-       *   },
-       *   
-       *   startNewDeal() {
-       *     // Start a new game (called by "New Deal" button)
-       *   },
-       *   
-       *   destroy() {
-       *     // Cleanup when switching games
-       *   },
-       *   
-       *   // Engine calls these to update shell:
-       *   onGameStart: null,     // () => void
-       *   onMove: null,          // ({ moves, stockCount, foundationCount, timeSeconds }) => void  
-       *   onWin: null,           // ({ timeSeconds, moves }) => void
-       *   onLoss: null           // () => void
-       * };
-       * 
-       * // Shell integration:
-       * gameEngine.onMove = (stats) => {
-       *   document.getElementById('hudMoves').textContent = `Moves ${stats.moves}`;
-       *   document.getElementById('hudStock').textContent = `Stock ${stats.stockCount}`;
-       * };
-       * 
-       * gameEngine.mount(gameEngineMount, { 
-       *   autoplay: getAutoplayPreference(),
-       *   animationSpeed: getAnimationSpeedPreference(),
-       *   soundEnabled: getSoundPreference()
-       * });
-       */
+      // ===== GAME ENGINE INTEGRATION =====
       
-      // Example integration placeholder - replace with actual game engine
-      function initializeGameEngine() {
-        if (!gameEngineMount) return;
+      let gameEngine = {
+        startNewDeal: () => {},
+        updateOptions: (options) => {},
+        destroy: () => {}
+      };
+      let gameStats = {
+        gamesPlayed: parseInt(localStorage.getItem('stats.gamesPlayed') || '0'),
+        gamesWon: parseInt(localStorage.getItem('stats.gamesWon') || '0'),
+        deals: parseInt(localStorage.getItem('stats.deals') || '0')
+      };
+      
+      // Timer system
+      let gameTimer = {
+        startTime: null,
+        elapsed: 0,
+        isRunning: false,
+        interval: null
+      };
+      
+      function startTimer() {
+        if (gameTimer.isRunning) return;
+        gameTimer.startTime = Date.now();
+        gameTimer.isRunning = true;
+        gameTimer.interval = setInterval(() => {
+          gameTimer.elapsed = Math.floor((Date.now() - gameTimer.startTime) / 1000);
+          updateTimerDisplay();
+        }, 1000);
+      }
+      
+      function stopTimer() {
+        gameTimer.isRunning = false;
+        if (gameTimer.interval) {
+          clearInterval(gameTimer.interval);
+          gameTimer.interval = null;
+        }
+      }
+      
+      function resetTimer() {
+        stopTimer();
+        gameTimer.elapsed = 0;
+        gameTimer.startTime = null;
+        updateTimerDisplay();
+      }
+      
+      function updateTimerDisplay() {
+        const minutes = Math.floor(gameTimer.elapsed / 60);
+        const seconds = gameTimer.elapsed % 60;
+        const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const hudTime = document.getElementById('hudTime');
+        if (hudTime) hudTime.textContent = timeStr;
+      }
+      
+      // Shell callbacks for game engine
+      const shellCallbacks = {
+        onFirstMove: () => {
+          console.log('🎮 First move detected, starting timer');
+          startTimer();
+        },
         
-        // Clear any existing content
+        onMove: (moveData) => {
+          console.log('🎮 Move:', moveData);
+          // Update HUD elements
+          const hudMoves = document.getElementById('hudMoves');
+          const hudScore = document.getElementById('hudScore');
+          const hudStock = document.getElementById('hudStock');
+          
+          if (hudMoves) hudMoves.textContent = `Moves ${moveData.moves}`;
+          if (hudScore) hudScore.textContent = `Score ${moveData.score}`;
+          if (hudStock && moveData.stockCount !== undefined) {
+            hudStock.textContent = `Stock ${moveData.stockCount}`;
+          }
+        },
+        
+        onWin: (winData) => {
+          console.log('🎉 Game won!', winData);
+          stopTimer();
+          gameStats.gamesWon++;
+          localStorage.setItem('stats.gamesWon', gameStats.gamesWon.toString());
+          showWinModal(winData);
+        },
+        
+        onLoss: (lossData) => {
+          console.log('😞 Game lost', lossData);
+          stopTimer();
+          // Could show loss modal here if needed
+        },
+        
+        onReset: () => {
+          console.log('🔄 Game reset');
+          resetTimer();
+          gameStats.deals++;
+          gameStats.gamesPlayed++;
+          localStorage.setItem('stats.deals', gameStats.deals.toString());
+          localStorage.setItem('stats.gamesPlayed', gameStats.gamesPlayed.toString());
+        }
+      };
+      
+      // Win modal functions
+      function showWinModal(winData) {
+        const winModal = document.getElementById('winModal');
+        const winTime = document.getElementById('winTime');
+        const winMoves = document.getElementById('winMoves');
+        const winScore = document.getElementById('winScore');
+        const winGamesWon = document.getElementById('winGamesWon');
+        const winRate = document.getElementById('winRate');
+        
+        if (winTime) winTime.textContent = winData.timeDisplay || formatTime(winData.timeSeconds || gameTimer.elapsed);
+        if (winMoves) winMoves.textContent = winData.moves.toString();
+        if (winScore) winScore.textContent = winData.score.toString();
+        if (winGamesWon) winGamesWon.textContent = gameStats.gamesWon.toString();
+        
+        const rate = gameStats.gamesPlayed > 0 ? Math.round((gameStats.gamesWon / gameStats.gamesPlayed) * 100) : 0;
+        if (winRate) winRate.textContent = `${rate}%`;
+        
+        if (winModal && typeof winModal.showModal === 'function') {
+          winModal.showModal();
+        } else if (winModal) {
+          winModal.setAttribute('open', '');
+        }
+      }
+      
+      function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+      
+      // Simple fake game implementation
+      const fakeGameState = {
+        moves: 0,
+        score: 0,
+        stockCount: 24,
+        isWon: false
+      };
+      
+      // Initialize the fake game engine
+      function initializeGameEngine() {
+        const gameEngineMount = document.getElementById('stage');
+        if (!gameEngineMount) {
+          console.error('Game mount point not found');
+          return;
+        }
+        
+        // Create fake game interface
         gameEngineMount.innerHTML = `
-          <div class="engine-placeholder">
-            <div class="placeholder-content">
-              <div class="placeholder-title">Ready for Engine Mount</div>
-              <div class="placeholder-subtitle">Game engine integration point</div>
-              <div class="placeholder-note">Container ID: gameEngineMount</div>
+          <div style="
+            padding: 40px;
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+          ">
+            <div style="
+              font-size: 24px;
+              font-weight: bold;
+              color: #e6e7eb;
+              margin-bottom: 10px;
+            ">
+              🎮 Klondike Solitaire
+            </div>
+            
+            <div style="
+              font-size: 14px;
+              color: #9aa3ad;
+              margin-bottom: 20px;
+              line-height: 1.4;
+            ">
+              Fake game for testing shell integration<br>
+              Click buttons below to simulate game actions
+            </div>
+
+            <div style="
+              display: grid;
+              grid-template-columns: repeat(4, 60px);
+              gap: 10px;
+              margin-bottom: 20px;
+              justify-content: center;
+            ">
+              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♠️</div>
+              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♥️</div>
+              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♦️</div>
+              <div style="width:60px;height:80px;border:2px solid #555;border-radius:6px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;">♣️</div>
+            </div>
+
+            <div style="
+              display: flex;
+              gap: 12px;
+              flex-wrap: wrap;
+              justify-content: center;
+            ">
+              <button id="fakeMove" style="
+                padding: 8px 16px;
+                border: 1px solid rgba(76, 175, 80, 0.5);
+                border-radius: 6px;
+                background: rgba(76, 175, 80, 0.2);
+                color: #4CAF50;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+              ">
+                Make Move (+10 pts)
+              </button>
+              
+              <button id="fakeWin" style="
+                padding: 8px 16px;
+                border: 1px solid rgba(255, 193, 7, 0.5);
+                border-radius: 6px;
+                background: rgba(255, 193, 7, 0.2);
+                color: #FFC107;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+              ">
+                Trigger Win
+              </button>
             </div>
           </div>
         `;
         
-        console.log('Game engine mount point ready:', gameEngineMount);
+        // Add event listeners for fake game actions
+        const fakeMoveBtn = document.getElementById('fakeMove');
+        const fakeWinBtn = document.getElementById('fakeWin');
+        
+        fakeMoveBtn?.addEventListener('click', () => {
+          if (fakeGameState.moves === 0) {
+            shellCallbacks.onFirstMove();
+          }
+          
+          fakeGameState.moves++;
+          fakeGameState.score += 10;
+          fakeGameState.stockCount = Math.max(0, fakeGameState.stockCount - 1);
+          
+          shellCallbacks.onMove({
+            moves: fakeGameState.moves,
+            score: fakeGameState.score,
+            stockCount: fakeGameState.stockCount
+          });
+        });
+        
+        fakeWinBtn?.addEventListener('click', () => {
+          fakeGameState.isWon = true;
+          shellCallbacks.onWin({
+            moves: fakeGameState.moves,
+            score: fakeGameState.score,
+            timeSeconds: gameTimer.elapsed
+          });
+        });
+        
+        // Initialize game engine object for compatibility
+        gameEngine = {
+          startNewDeal: () => {
+            console.log('🔄 Starting new deal');
+            fakeGameState.moves = 0;
+            fakeGameState.score = 0;
+            fakeGameState.stockCount = 24;
+            fakeGameState.isWon = false;
+            shellCallbacks.onReset();
+          },
+          
+          updateOptions: (newOptions) => {
+            console.log('⚙️ Updating game options:', newOptions);
+          },
+          
+          destroy: () => {
+            console.log('💥 Game engine destroyed');
+          }
+        };
+        
+        console.log('🎮 Fake game engine initialized');
       }
       
-      // Initialize the engine mount point
+      // Helper functions for preferences (renamed to avoid conflicts)
+      function gameAutoplayPreference() {
+        return localStorage.getItem('game.autoplay') || 'whenObvious';
+      }
+      
+      function gameAnimationSpeedPreference() {
+        return localStorage.getItem('game.animationSpeed') || 'normal';
+      }
+      
+      function gameSoundPreference() {
+        return localStorage.getItem('game.sound') !== 'false';
+      }
+      
+      function gameAnimationPreference() {
+        return localStorage.getItem('game.animations') !== 'false';
+      }
+      
+      function gameHUDPreference(hudElement) {
+        return localStorage.getItem(`hud.${hudElement}`) !== 'false';
+      }
+      
+      // Header button event listeners
+      const newGameBtn = document.getElementById('newGameBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const autoplayBtn = document.getElementById('autoplayBtn');
+      
+      newGameBtn?.addEventListener('click', () => {
+        console.log('🎮 New Game button clicked');
+        if (gameEngine) {
+          gameEngine.startNewDeal();
+        }
+      });
+      
+      pauseBtn?.addEventListener('click', () => {
+        console.log('⏸️ Pause button clicked');
+        if (gameTimer.isRunning) {
+          pauseGame();
+          pauseBtn.textContent = 'Resume';
+        } else {
+          resumeGame();
+          pauseBtn.textContent = 'Pause';
+        }
+      });
+      
+      autoplayBtn?.addEventListener('click', () => {
+        console.log('🤖 Autoplay button clicked');
+        // Toggle autoplay mode
+        const currentAutoplay = gameAutoplayPreference();
+        const newAutoplay = currentAutoplay === 'off' ? 'whenObvious' : 'off';
+        localStorage.setItem('game.autoplay', newAutoplay);
+        
+        // Update button text
+        autoplayBtn.textContent = newAutoplay === 'off' ? 'Autoplay' : 'Auto: ' + newAutoplay;
+        
+        // Notify game engine of preference change
+        if (gameEngine && gameEngine.updateOptions) {
+          gameEngine.updateOptions({ autoplay: newAutoplay });
+        }
+      });
+      
+      // Initialize header button text
+      function initializeHeaderButtons() {
+        if (autoplayBtn) {
+          const autoplay = gameAutoplayPreference();
+          autoplayBtn.textContent = autoplay === 'off' ? 'Autoplay' : 'Auto: ' + autoplay;
+        }
+        
+        if (pauseBtn) {
+          pauseBtn.textContent = gameTimer.isRunning ? 'Pause' : 'Resume';
+        }
+      }
+      
+      // Win modal event listeners
+      const playAgainBtn = document.getElementById('playAgainBtn');
+      const shareScoreBtn = document.getElementById('shareScoreBtn');
+      
+      playAgainBtn?.addEventListener('click', () => {
+        const winModal = document.getElementById('winModal');
+        if (winModal) winModal.close();
+        
+        if (gameEngine) {
+          gameEngine.startNewDeal();
+        }
+      });
+      
+      shareScoreBtn?.addEventListener('click', () => {
+        const timeText = document.getElementById('winTime')?.textContent || '00:00';
+        const movesText = document.getElementById('winMoves')?.textContent || '0';
+        const scoreText = document.getElementById('winScore')?.textContent || '0';
+        
+        const shareText = `I just won Klondike Solitaire! Time: ${timeText}, Moves: ${movesText}, Score: ${scoreText}`;
+        
+        if (navigator.share) {
+          navigator.share({
+            title: 'Klondike Solitaire Win!',
+            text: shareText
+          });
+        } else {
+          navigator.clipboard.writeText(shareText).then(() => {
+            alert('Score copied to clipboard!');
+          });
+        }
+      });
+      
+      // Initialize everything when DOM is ready
       initializeGameEngine();
+      initializeHeaderButtons();
 
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {

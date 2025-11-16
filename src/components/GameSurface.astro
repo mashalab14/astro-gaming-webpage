@@ -4,13 +4,22 @@ import AdArea from './AdArea.astro';
 ---
 
 <section class="viewport" id="game" aria-label="Game viewport" role="region">
+  <!-- Header Area -->
+  <div class="header-area">
+    <div class="game-title">
+      <h1 id="gameTitle">Klondike Solitaire</h1>
+    </div>
+    <div class="header-controls">
+      <button id="newGameBtn" class="header-btn" type="button" aria-label="New Game">New Game</button>
+      <button id="pauseBtn" class="header-btn" type="button" aria-label="Pause">Pause</button>
+      <button id="autoplayBtn" class="header-btn" type="button" aria-label="Toggle Autoplay">Autoplay</button>
+    </div>
+  </div>
+
   <!-- Game Area (80% width) -->
   <div class="game-area">
     <div class="stage" id="stage">
-      <div>
-        <div style="text-align:center; font-size:36px; font-weight:800; color:#e6e7eb;">GAME</div>
-        <div class="label">Embed canvas/WebGL/WASM or iframe here</div>
-      </div>
+      <!-- Game engine will be mounted here -->
     </div>
     <div class="hud tl" id="hudMoves">Moves 0</div>
     <div class="hud tl2" id="hudScore">Score 0</div>
@@ -124,11 +133,62 @@ import AdArea from './AdArea.astro';
     background-size: 2px 2px; 
     opacity:.5; 
   }
+  /* ===== Header Area ===== */
+  .header-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
+  }
+
+  .game-title h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #e6e7eb;
+  }
+
+  .header-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .header-btn {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #e6e7eb;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .header-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .header-btn:active {
+    transform: translateY(1px);
+  }
+
   /* ===== Game Area (full width) ===== */
   .game-area {
     width: 100%;
     height: 100%;
     position: relative;
+    padding-top: 60px; /* Account for header */
   }
 
   .stage { 

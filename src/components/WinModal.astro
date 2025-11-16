@@ -1,0 +1,155 @@
+---
+// Win/End Modal component - Game completion modal
+---
+
+<!-- Win/End Modal -->
+<dialog id="winModal" class="win-modal" aria-labelledby="winTitle" aria-describedby="winStats">
+  <form method="dialog">
+    <button class="close-modal" value="cancel" aria-label="Close">×</button>
+    <div class="modal-content">
+      <h2 id="winTitle">Congratulations!</h2>
+      <div id="winStats" class="stats">
+        <div class="stat-row">
+          <span class="stat-label">Time:</span>
+          <span id="winTime" class="stat-value">00:00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Moves:</span>
+          <span id="winMoves" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Score:</span>
+          <span id="winScore" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Games Won:</span>
+          <span id="winGamesWon" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Win Rate:</span>
+          <span id="winRate" class="stat-value">0%</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="playAgainBtn" class="action-btn primary">Play Again</button>
+        <button type="button" id="shareScoreBtn" class="action-btn secondary">Share</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<style>
+  .win-modal {
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 400px;
+    width: calc(100% - 32px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  }
+
+  .win-modal::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    padding: 24px;
+    position: relative;
+  }
+
+  .close-modal {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+
+  .close-modal:hover {
+    color: #6b7280;
+  }
+
+  #winTitle {
+    margin: 0 0 20px;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    color: #4CAF50;
+  }
+
+  .stats {
+    margin-bottom: 24px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .stat-row:last-child {
+    border-bottom: none;
+  }
+
+  .stat-label {
+    font-weight: 500;
+    color: #d1d5db;
+  }
+
+  .stat-value {
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .action-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 100px;
+  }
+
+  .action-btn.primary {
+    background: #4CAF50;
+    color: white;
+  }
+
+  .action-btn.primary:hover {
+    background: #45a049;
+  }
+
+  .action-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .action-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .action-btn:active {
+    transform: translateY(1px);
+  }
+</style>
