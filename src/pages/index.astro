@@ -925,6 +925,9 @@ import Footer from '../components/Footer.astro';
         }
       }
       
+      // Initialize timer display on page load
+      updateTimerDisplay();
+      
       // Shell callbacks for game engine
       const shellCallbacks = {
         onFirstMove: () => {
@@ -1279,6 +1282,16 @@ import Footer from '../components/Footer.astro';
         currentGameName.textContent = gameData[savedGame];
       }
       
+      // Handle dropdown toggle on click
+      switcherTrigger?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const gameSwitcher = switcherTrigger.parentElement;
+        if (gameSwitcher) {
+          gameSwitcher.classList.toggle('open');
+        }
+      });
+      
       // Handle dropdown option clicks
       switcherDropdown?.addEventListener('click', (e) => {
         const option = e.target.closest('.switcher-option');
@@ -1294,6 +1307,12 @@ import Footer from '../components/Footer.astro';
             currentGameName.textContent = gameData[selectedGame];
           }
           
+          // Close dropdown
+          const gameSwitcher = switcherTrigger?.parentElement;
+          if (gameSwitcher) {
+            gameSwitcher.classList.remove('open');
+          }
+          
           // Navigate to the game page
           window.location.href = `/game/${selectedGame}`;
         }
@@ -1301,8 +1320,9 @@ import Footer from '../components/Footer.astro';
       
       // Close dropdown when clicking outside
       document.addEventListener('click', (e) => {
-        if (!switcherTrigger?.contains(e.target) && !switcherDropdown?.contains(e.target)) {
-          // Dropdown will close automatically due to CSS hover, but this prevents conflicts
+        const gameSwitcher = document.querySelector('.game-switcher');
+        if (gameSwitcher && !gameSwitcher.contains(e.target)) {
+          gameSwitcher.classList.remove('open');
         }
       });
     });

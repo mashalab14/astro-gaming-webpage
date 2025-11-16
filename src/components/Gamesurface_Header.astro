@@ -9,8 +9,8 @@
   <div class="hud tr2" id="hudStock">Stock 24</div>
   <div class="hud tr" id="hudTime">
     <span id="timeDisplay">00:00</span>
-    <button id="pausePlayBtn" class="pause-play-btn" type="button" aria-label="Start Game" title="Start Game">
-      ▶
+    <button id="pausePlayBtn" class="pause-play-btn" type="button" aria-label="Pause" title="Pause" style="display: none;">
+      ⏸
     </button>
   </div>
 
@@ -113,6 +113,10 @@
     width: 180px;
   }
 
+  .game-switcher:hover {
+    z-index: 1001;
+  }
+
   .switcher-trigger {
     padding: 8px 12px;
     border: 1px solid transparent;
@@ -148,24 +152,36 @@
     top: 100%;
     left: 0;
     right: 0;
+    background: #1a1a1a;
     background: color-mix(in srgb, var(--table-bg) 90%, #000);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 6px;
     backdrop-filter: blur(8px);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-5px);
     transition: all 0.2s ease;
-    z-index: 100;
+    z-index: 1000;
     margin-top: 4px;
     max-height: 200px;
     overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
+  .game-switcher.open .switcher-dropdown {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+  }
+
+  .game-switcher.open .dropdown-arrow {
+    transform: rotate(180deg);
+  }
+  
   .game-switcher:hover .switcher-dropdown {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
   }
 
   .game-switcher:hover .dropdown-arrow {
@@ -221,8 +237,8 @@
   }
 
   .settings-btn:hover {
-    background: color-mix(in srgb, var(--table-bg) 30%, transparent);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: transparent;
+    border-color: transparent;
   }
 
   .settings-btn:focus-visible {
