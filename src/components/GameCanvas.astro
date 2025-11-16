@@ -12,11 +12,11 @@
 </div>
 
 <style>
-  /* ===== Game Canvas (Red - 70% width via flex, viewport height - 6rem) ===== */
+  /* ===== Game Canvas (within 70% game area, height minus header/footer) ===== */
   .game-canvas {
     position: relative;
-    flex: 7;
-    height: 100%;
+    flex: 1;
+    height: calc(100vh - 6rem);
     background: transparent;
     overflow: hidden;
   }

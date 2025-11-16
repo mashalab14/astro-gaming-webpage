@@ -8,20 +8,18 @@ import PauseOverlay from './PauseOverlay.astro';
 ---
 
 <section class="viewport" id="game" aria-label="Game viewport" role="region">
-  <!-- Yellow: Gamesurface_Header (3rem height) -->
-  <Gamesurface_Header />
-  
   <!-- Main content area with game canvas and ad area -->
   <div class="main-content">
-    <!-- Red: Game Canvas (80% width, viewport height - 6rem) -->
-    <GameCanvas />
+    <!-- Game area: Header, Canvas, Footer (70% width) -->
+    <div class="game-area">
+      <Gamesurface_Header />
+      <GameCanvas />
+      <Gamesurface_Footer />
+    </div>
     
-    <!-- Green: AdArea (20% width, existing component) -->
+    <!-- AdArea (30% width, full viewport height) -->
     <AdArea />
   </div>
-  
-  <!-- Purple: Gamesurface_Footer (3rem height) -->
-  <Gamesurface_Footer />
   
   <!-- Pause Overlay -->
   <PauseOverlay />
@@ -70,5 +68,13 @@ import PauseOverlay from './PauseOverlay.astro';
     flex: 1;
     min-height: 0; /* Allow flex shrinking */
     position: relative;
+  }
+
+  /* Game area container (70% width) */
+  .game-area {
+    flex: 7;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
   }
 </style>

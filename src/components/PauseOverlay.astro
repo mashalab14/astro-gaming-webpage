@@ -1,33 +1,51 @@
 ---
-// Pause Overlay component - covers game canvas when paused
+// Pause Overlay component - covers entire GameSurface when paused
 ---
 
 <div id="pauseOverlay" class="pause-overlay" aria-live="polite">
-  <div class="pause-content">
-    <div class="pause-icon">⏸</div>
-    <h2>Game Paused</h2>
-    <p>Click anywhere to resume or press the play button</p>
+  <!-- Top section (20% height) - Pause message and unpause button -->
+  <div class="pause-top-section">
+    <div class="pause-content">
+      <h2>Game is Paused</h2>
+      <p>Click below to unpause</p>
+      <button id="unpauseBtn" class="unpause-btn" type="button">▶ Resume Game</button>
+    </div>
+  </div>
+  
+  <!-- Bottom section (80% height) - Reserved for ads -->
+  <div class="pause-ad-section">
+    <div class="ad-placeholder">
+      <p>Advertisement Space</p>
+      <small>80% of overlay height</small>
+    </div>
   </div>
 </div>
 
 <style>
-  /* ===== Pause Overlay ===== */
+  /* ===== Pause Overlay - covers entire GameSurface ===== */
   .pause-overlay {
     position: fixed;
-    top: 3rem;
+    top: 0;
     left: 0;
     width: 100vw;
-    height: calc(100vh - 3rem);
-    background: rgba(0, 0, 0, 0.8);
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
     display: none;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
     z-index: 100;
-    cursor: pointer;
   }
   
   .pause-overlay.show {
     display: flex;
+  }
+  
+  /* Top section (20% height) - Pause message */
+  .pause-top-section {
+    height: 20%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.1);
   }
   
   .pause-content {
@@ -36,21 +54,65 @@
     user-select: none;
   }
   
-  .pause-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.8;
-  }
-  
   .pause-content h2 {
-    font-size: 2rem;
-    margin: 0 0 1rem 0;
+    font-size: 1.8rem;
+    margin: 0 0 0.5rem 0;
     font-weight: 600;
   }
   
   .pause-content p {
-    font-size: 1.1rem;
-    margin: 0;
+    font-size: 1rem;
+    margin: 0 0 1rem 0;
+    opacity: 0.9;
+  }
+  
+  .unpause-btn {
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border: 2px solid #4CAF50;
+    border-radius: 8px;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .unpause-btn:hover {
+    background: #45a049;
+    border-color: #45a049;
+    transform: translateY(-1px);
+  }
+  
+  .unpause-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  
+  /* Bottom section (80% height) - Ad space */
+  .pause-ad-section {
+    height: 80%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.05);
+  }
+  
+  .ad-placeholder {
+    text-align: center;
+    color: #9aa3ad;
+    padding: 2rem;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+  }
+  
+  .ad-placeholder p {
+    font-size: 1.2rem;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .ad-placeholder small {
+    font-size: 0.9rem;
     opacity: 0.7;
   }
 </style>

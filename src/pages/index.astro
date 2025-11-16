@@ -768,16 +768,8 @@ import Footer from '../components/Footer.astro';
           pauseOverlay.classList.add('show');
         }
         
-        // Update button state to show current time and play symbol
-        const pausePlayBtn = document.getElementById('pausePlayBtn');
-        if (pausePlayBtn) {
-          const minutes = Math.floor(gameTimer.elapsed / 60);
-          const seconds = gameTimer.elapsed % 60;
-          const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-          pausePlayBtn.innerHTML = `▶ ${timeStr}`;
-          pausePlayBtn.setAttribute('aria-label', 'Play');
-          pausePlayBtn.setAttribute('title', 'Play');
-        }
+        // Update button display
+        updateTimerDisplay();
       }
       
       function resumeGame() {
@@ -789,14 +781,8 @@ import Footer from '../components/Footer.astro';
           pauseOverlay.classList.remove('show');
         }
         
-        // Update button state - the timer will update the display
-        const pausePlayBtn = document.getElementById('pausePlayBtn');
-        if (pausePlayBtn) {
-          pausePlayBtn.setAttribute('aria-label', 'Pause');
-          pausePlayBtn.setAttribute('title', 'Pause');
-          // Let updateTimerDisplay handle the content
-          updateTimerDisplay();
-        }
+        // Update button display
+        updateTimerDisplay();
       }
 
       const resumeBtn = document.getElementById('resumeBtn');
@@ -899,12 +885,20 @@ import Footer from '../components/Footer.astro';
         const minutes = Math.floor(gameTimer.elapsed / 60);
         const seconds = gameTimer.elapsed % 60;
         const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const timeDisplay = document.getElementById('timeDisplay');
         const pausePlayBtn = document.getElementById('pausePlayBtn');
+        
+        if (timeDisplay) timeDisplay.textContent = timeStr;
+        
         if (pausePlayBtn) {
           if (gameTimer.isRunning) {
-            pausePlayBtn.innerHTML = `⏸ ${timeStr}`;
+            pausePlayBtn.innerHTML = `⏸`;
+            pausePlayBtn.setAttribute('aria-label', 'Pause');
+            pausePlayBtn.setAttribute('title', 'Pause');
           } else {
-            pausePlayBtn.innerHTML = `▶ ${timeStr}`;
+            pausePlayBtn.innerHTML = `▶`;
+            pausePlayBtn.setAttribute('aria-label', 'Start/Resume');
+            pausePlayBtn.setAttribute('title', 'Start/Resume');
           }
         }
       }
@@ -1190,8 +1184,7 @@ import Footer from '../components/Footer.astro';
       // Initialize game engine when DOM is ready
       initializeGameEngine();
       
-      // Start timer immediately so pause button works from the beginning
-      startTimer();
+      // Timer will start when user first clicks the play button
       
       // Pause/Play button functionality with retry mechanism
       function setupPausePlayButton() {
@@ -1227,6 +1220,14 @@ import Footer from '../components/Footer.astro';
         }, 100);
       }
       
+      // Setup unpause button in overlay
+      const unpauseBtn = document.getElementById('unpauseBtn');
+      unpauseBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resumeGame();
+      });
+      
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
         const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
@@ -1236,119 +1237,16 @@ import Footer from '../components/Footer.astro';
       });
 
       // ===== Game Switcher logic =====
-      const switcherBtn = document.getElementById('gameSwitcherBtn');
-      const switcherMenu = document.getElementById('gameSwitcherMenu');
-      const gsSearch = document.getElementById('gsSearch');
-      const gsAll = document.getElementById('gsAll');
-      const gsRecent = document.getElementById('gsRecent');
-      const gsPinned = document.getElementById('gsPinned');
-
-      const ALL_GAMES = [
-        { slug:'minesweeper-classic', title:'Minesweeper Classic', meta:'Puzzle · Single player' },
-        { slug:'klondike-solitaire', title:'Klondike Solitaire', meta:'Card · Single player' },
-        { slug:'spider-solitaire', title:'Spider Solitaire', meta:'Card · Single player' },
-        { slug:'hearts', title:'Hearts', meta:'Card · Multiplayer' },
-        { slug:'freecell', title:'FreeCell', meta:'Card · Single player' },
-        { slug:'2048', title:'2048', meta:'Puzzle · Single player' }
-      ];
-
-      let menuInitialized = false;
-
-      function getPinned() { try { return JSON.parse(localStorage.getItem('gs.pins')||'[]'); } catch { return []; } }
-      function setPinned(arr) { localStorage.setItem('gs.pins', JSON.stringify(arr.slice(0,50))); }
-      function getRecents() { try { return JSON.parse(localStorage.getItem('gs.recents')||'[]'); } catch { return []; } }
-      function setRecents(arr) { localStorage.setItem('gs.recents', JSON.stringify(arr.slice(0,50))); }
-      function addRecent(slug) {
-        const now = Date.now();
-        const rec = getRecents().filter(r => r.slug !== slug);
-        rec.unshift({ slug, t: now });
-        setRecents(rec);
-      }
-      function gameBySlug(slug) { return ALL_GAMES.find(g => g.slug === slug); }
-
-      function renderOptions(container, items) {
-        container.innerHTML = '';
-        items.forEach(g => {
-          const row = document.createElement('div');
-          row.className = 'option';
-          row.setAttribute('role','option');
-          row.setAttribute('tabindex','-1');
-          row.dataset.slug = g.slug;
-          row.innerHTML = `<div class="text"><div class="title">${g.title}</div><div class="meta">${g.meta||''}</div></div>`;
-          const pin = document.createElement('button');
-          pin.className = 'pinbtn';
-          const pinned = getPinned().includes(g.slug);
-          pin.textContent = pinned ? 'Unpin' : 'Pin';
-          pin.setAttribute('aria-pressed', String(pinned));
-          pin.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const pins = getPinned();
-            if (pinned) setPinned(pins.filter(s => s !== g.slug)); else { pins.unshift(g.slug); setPinned(pins); }
-            // Re-render sections
-            populateSections();
-          });
-          row.appendChild(pin);
-          row.addEventListener('click', () => selectGame(g.slug));
-          container.appendChild(row);
-        });
-      }
-
-      function populateSections(filter = '') {
-        const f = filter.trim().toLowerCase();
-        const all = f ? ALL_GAMES.filter(g => g.title.toLowerCase().includes(f) || g.slug.includes(f)) : ALL_GAMES;
-        const rec = getRecents().map(r => gameBySlug(r.slug)).filter(Boolean);
-        const pins = getPinned().map(s => gameBySlug(s)).filter(Boolean);
-        renderOptions(gsPinned, pins);
-        renderOptions(gsRecent, rec);
-        renderOptions(gsAll, all);
-        // Focus first option after filtering
-        const first = switcherMenu.querySelector('.option');
-        if (first) first.focus();
-      }
-
-      function openMenu() {
-        if (!menuInitialized) { populateSections(); menuInitialized = true; }
-        switcherMenu.hidden = false;
-        switcherBtn.setAttribute('aria-expanded','true');
-        gsSearch.focus();
-        document.addEventListener('keydown', onMenuKey);
-        document.addEventListener('click', onDocClick, true);
-      }
-      function closeMenu() {
-        switcherMenu.hidden = true;
-        switcherBtn.setAttribute('aria-expanded','false');
-        document.removeEventListener('keydown', onMenuKey);
-        document.removeEventListener('click', onDocClick, true);
-        switcherBtn.focus();
-      }
-      function onDocClick(e) {
-        if (e.target === switcherBtn || switcherMenu.contains(e.target)) return;
-        closeMenu();
-      }
-      function onMenuKey(e) {
-        if (e.key === 'Escape') { e.preventDefault(); closeMenu(); return; }
-        const options = Array.from(switcherMenu.querySelectorAll('.option'));
-        const idx = options.indexOf(document.activeElement);
-        if (e.key === 'ArrowDown') { e.preventDefault(); (options[idx+1]||options[0])?.focus(); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); (options[idx-1]||options[options.length-1])?.focus(); }
-        else if (e.key === 'Home') { e.preventDefault(); options[0]?.focus(); }
-        else if (e.key === 'End') { e.preventDefault(); options[options.length-1]?.focus(); }
-        else if (e.key === 'Enter' && document.activeElement?.classList.contains('option')) { e.preventDefault(); document.activeElement.click(); }
-      }
-      function selectGame(slug) {
-        addRecent(slug);
-        // Navigate to the game page. Replace with router navigation if needed.
-        window.location.href = `/game/${slug}`;
-      }
-
-      switcherBtn?.addEventListener('click', () => {
-        const expanded = switcherBtn.getAttribute('aria-expanded') === 'true';
-        expanded ? closeMenu() : openMenu();
+      const gameSwitcherSelect = document.getElementById('gameSwitcherSelect');
+      
+      gameSwitcherSelect?.addEventListener('change', (e) => {
+        const selectedGame = e.target.value;
+        if (selectedGame) {
+          console.log(`Switching to game: ${selectedGame}`);
+          // Navigate to the game page. Replace with router navigation if needed.
+          window.location.href = `/game/${selectedGame}`;
+        }
       });
-      switcherBtn?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(); }
-      });
-      gsSearch?.addEventListener('input', (e) => populateSections(e.target.value));
     });
   </script>
 </body>
