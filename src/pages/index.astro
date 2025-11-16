@@ -699,10 +699,13 @@ import Footer from '../components/Footer.astro';
 
       // Settings modal behavior
       function showSettings() {
-        if (typeof settingsDlg.showModal === 'function') {
+        console.log('showSettings called, settingsDlg:', settingsDlg);
+        if (typeof settingsDlg?.showModal === 'function') {
+          console.log('Using showModal');
           settingsDlg.showModal();
         } else {
-          settingsDlg.setAttribute('open', '');
+          console.log('Using setAttribute');
+          settingsDlg?.setAttribute('open', '');
         }
         pauseGame(); // Pause game when settings open
       }
@@ -716,9 +719,24 @@ import Footer from '../components/Footer.astro';
 
       // Settings button event listener
       const vpSettingsBtn = document.getElementById('vpSettingsBtn');
-      vpSettingsBtn?.addEventListener('click', () => {
-        showSettings();
-      });
+      if (vpSettingsBtn) {
+        vpSettingsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          showSettings();
+        });
+        console.log('Settings button event listener added successfully');
+      } else {
+        console.error('Settings button not found!');
+        // Fallback: try to find by class
+        const settingsBtn = document.querySelector('.settings-btn');
+        if (settingsBtn) {
+          settingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSettings();
+          });
+          console.log('Settings button found by class and event listener added');
+        }
+      }
 
       // Close settings when clicking outside
       settingsDlg.addEventListener('click', (e) => {
