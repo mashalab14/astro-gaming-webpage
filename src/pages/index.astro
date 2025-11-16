@@ -717,21 +717,35 @@ import Footer from '../components/Footer.astro';
         // Game remains paused - user can resume manually
       }
 
-      // Settings button event listener
+      // Settings button event listener with debugging
       const vpSettingsBtn = document.getElementById('vpSettingsBtn');
+      console.log('Settings button found:', vpSettingsBtn);
+      console.log('Settings button style:', vpSettingsBtn ? getComputedStyle(vpSettingsBtn) : 'null');
+      
       if (vpSettingsBtn) {
         vpSettingsBtn.addEventListener('click', (e) => {
+          console.log('Settings button clicked!', e);
           e.preventDefault();
+          e.stopPropagation();
           showSettings();
         });
-        console.log('Settings button event listener added successfully');
+        
+        // Add mouse events for debugging
+        vpSettingsBtn.addEventListener('mouseenter', () => console.log('Mouse entered settings button'));
+        vpSettingsBtn.addEventListener('mouseleave', () => console.log('Mouse left settings button'));
+        vpSettingsBtn.addEventListener('mousedown', () => console.log('Mouse down on settings button'));
+        vpSettingsBtn.addEventListener('mouseup', () => console.log('Mouse up on settings button'));
+        
+        console.log('Settings button event listeners added successfully');
       } else {
         console.error('Settings button not found!');
         // Fallback: try to find by class
         const settingsBtn = document.querySelector('.settings-btn');
         if (settingsBtn) {
           settingsBtn.addEventListener('click', (e) => {
+            console.log('Settings button (by class) clicked!', e);
             e.preventDefault();
+            e.stopPropagation();
             showSettings();
           });
           console.log('Settings button found by class and event listener added');

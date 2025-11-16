@@ -240,9 +240,9 @@
     right: 1rem;
     width: 2rem;
     height: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.8);
     border-radius: 6px;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.1);
     color: #e6e7eb;
     cursor: pointer;
     font-size: 1.2rem;
@@ -250,7 +250,8 @@
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(4px);
-    z-index: 15;
+    z-index: 9999;
+    pointer-events: auto;
   }
 
   .settings-btn:hover {
