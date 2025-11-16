@@ -43,8 +43,31 @@
     position: relative;
     height: 3rem;
     width: 100%;
-    background: transparent;
+    background: var(--table-bg);
     z-index: 10;
+  }
+  
+  .gamesurface-header::before { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
+    z-index: 1;
+  }
+  
+  .gamesurface-header::after { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background-image:
+      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
+      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
+      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 2px 2px; 
+    opacity: .5;
+    z-index: 1;
   }
 
   /* HUD badges */
@@ -66,7 +89,7 @@
 
   /* ===== Game Switcher (top-left) ===== */
   .game-switcher {
-    position: absolute;
+    position: relative;
     top: 0.5rem;
     left: 1rem;
     z-index: 20;
@@ -212,7 +235,7 @@
 
   /* ===== Settings Button (top-right) ===== */
   .settings-btn {
-    position: absolute;
+    position: relative;
     top: 0.5rem;
     right: 1rem;
     width: 2rem;
@@ -228,6 +251,7 @@
     justify-content: center;
     backdrop-filter: blur(4px);
     z-index: 15;
+    position: absolute;
   }
 
   .settings-btn:hover {

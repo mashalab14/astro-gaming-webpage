@@ -50,10 +50,33 @@
     position: relative;
     height: 3rem;
     width: 100%;
-    background: transparent;
+    background: var(--table-bg);
     display: flex;
     align-items: center;
-    z-index: 5;
+    z-index: 10;
+  }
+  
+  .gamesurface-footer::before { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
+    z-index: 1;
+  }
+  
+  .gamesurface-footer::after { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background-image:
+      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
+      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
+      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 2px 2px; 
+    opacity: .5;
+    z-index: 1;
   }
 
   /* ===== Game Control Buttons ===== */
@@ -62,6 +85,8 @@
     gap: 12px;
     padding-left: 16px;
     align-items: center;
+    position: relative;
+    z-index: 15;
   }
   
   .control-btn {

@@ -20,8 +20,31 @@
     position: relative;
     width: 80%;
     height: calc(100vh - 6rem);
-    background: transparent;
+    background: var(--table-bg);
     overflow: hidden;
+  }
+  
+  .game-canvas::before { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
+    z-index: 1;
+  }
+  
+  .game-canvas::after { 
+    content: ""; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background-image:
+      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
+      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
+      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 2px 2px; 
+    opacity: .5;
+    z-index: 1;
   }
 
   .stage { 
@@ -30,7 +53,8 @@
     display: grid; 
     place-items: center; 
     color: #c8cdd4; 
-    background: var(--table-bg);
+    position: relative;
+    z-index: 2;
   }
   
   .stage .label { 
@@ -50,7 +74,7 @@
     background: color-mix(in srgb, var(--table-bg) 70%, transparent); 
     color: #e6e7eb; 
     cursor: pointer;
-    z-index: 5;
+    z-index: 15;
   }
   
   .edge-menu:focus-visible { 
@@ -67,7 +91,7 @@
     color: #e6e7eb; 
     background: color-mix(in srgb, var(--table-bg) 85%, transparent); 
     font-weight: 700;
-    z-index: 10;
+    z-index: 20;
   }
   
   .overlay.show { 

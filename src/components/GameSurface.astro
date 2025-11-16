@@ -27,7 +27,6 @@ import AdArea from './AdArea.astro';
   /* ===== Game viewport - New 4-component layout ===== */
   .viewport { 
     position: relative; 
-    background: var(--table-bg); 
     border: none; 
     border-radius: 0; 
     height: 100vh; 
@@ -36,29 +35,6 @@ import AdArea from './AdArea.astro';
     display: flex;
     flex-direction: column;
   }
-  
-  .viewport::before { 
-    content:""; 
-    position:absolute; 
-    inset:0; 
-    pointer-events:none; 
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
-    z-index: 1;
-  }
-  
-  .viewport::after { 
-    content:""; 
-    position:absolute; 
-    inset:0; 
-    pointer-events:none; 
-    background-image:
-      radial-gradient(1px 1px at 0 0, rgba(255,255,255,.08) 1px, transparent 1px),
-      radial-gradient(1px 1px at 1px 1px, rgba(0,0,0,.06) 1px, transparent 1px),
-      radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
-    background-size: 2px 2px; 
-    opacity:.5;
-    z-index: 1;
-  }
 
   /* ===== Main content area (middle section) ===== */
   .main-content {
@@ -66,6 +42,5 @@ import AdArea from './AdArea.astro';
     flex: 1;
     min-height: 0; /* Allow flex shrinking */
     position: relative;
-    z-index: 2;
   }
 </style>
