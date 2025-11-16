@@ -4,6 +4,7 @@ import Gamesurface_Header from './Gamesurface_Header.astro';
 import GameCanvas from './GameCanvas.astro';
 import Gamesurface_Footer from './Gamesurface_Footer.astro';
 import AdArea from './AdArea.astro';
+import PauseOverlay from './PauseOverlay.astro';
 ---
 
 <section class="viewport" id="game" aria-label="Game viewport" role="region">
@@ -21,6 +22,9 @@ import AdArea from './AdArea.astro';
   
   <!-- Purple: Gamesurface_Footer (3rem height) -->
   <Gamesurface_Footer />
+  
+  <!-- Pause Overlay -->
+  <PauseOverlay />
 </section>
 
 <style>

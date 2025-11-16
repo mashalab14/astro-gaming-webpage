@@ -9,9 +9,6 @@
   
   <!-- Edge menu button -->
   <button id="edgeMenuBtn" class="edge-menu" type="button" aria-haspopup="dialog" aria-controls="menuDlg" aria-label="Menu">⋯</button>
-  
-  <!-- Pause overlay -->
-  <div id="pauseOverlay" class="overlay" aria-live="polite">Paused</div>
 </div>
 
 <style>
@@ -30,7 +27,7 @@
     inset: 0; 
     pointer-events: none; 
     background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
-    z-index: 1;
+    z-index: 2;
   }
   
   .game-canvas::after { 
@@ -44,7 +41,7 @@
       radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
     background-size: 2px 2px; 
     opacity: .5;
-    z-index: 1;
+    z-index: 2;
   }
 
   .stage { 
@@ -54,7 +51,7 @@
     place-items: center; 
     color: #c8cdd4; 
     position: relative;
-    z-index: 2;
+    z-index: 15;
   }
   
   .stage .label { 
@@ -82,19 +79,5 @@
     outline-offset: 2px; 
   }
 
-  .overlay { 
-    position: absolute; 
-    inset: 0; 
-    display: none; 
-    align-items: center; 
-    justify-content: center; 
-    color: #e6e7eb; 
-    background: color-mix(in srgb, var(--table-bg) 85%, transparent); 
-    font-weight: 700;
-    z-index: 20;
-  }
-  
-  .overlay.show { 
-    display: flex; 
-  }
+
 </style>

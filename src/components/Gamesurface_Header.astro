@@ -7,7 +7,10 @@
   <div class="hud tl" id="hudMoves">Moves 0</div>
   <div class="hud tl2" id="hudScore">Score 0</div>
   <div class="hud tr2" id="hudStock">Stock 24</div>
-  <div class="hud tr" id="hudTime">00:00</div>
+  <div class="hud tr" id="hudTime">
+    <button id="pausePlayBtn" class="pause-play-btn" type="button" aria-label="Pause/Play" title="Pause/Play">▶</button>
+    <span id="timeDisplay">00:00</span>
+  </div>
 
   <!-- Game switcher dropdown (top-left) -->
   <div class="game-switcher">
@@ -45,6 +48,7 @@
     width: 100%;
     background: var(--table-bg);
     z-index: 10;
+    overflow: hidden;
   }
   
   .gamesurface-header::before { 
@@ -53,7 +57,7 @@
     inset: 0; 
     pointer-events: none; 
     background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.18) 100%); 
-    z-index: 1;
+    z-index: 2;
   }
   
   .gamesurface-header::after { 
@@ -67,7 +71,7 @@
       radial-gradient(1px 1px at .5px .5px, rgba(255,255,255,.04) 1px, transparent 1px);
     background-size: 2px 2px; 
     opacity: .5;
-    z-index: 1;
+    z-index: 2;
   }
 
   /* HUD badges */
@@ -81,11 +85,40 @@
     padding: 4px 6px;
     top: 8px;
     z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
   .hud.tl { left: 50%; transform: translateX(-220px); }
   .hud.tl2 { left: 50%; transform: translateX(-120px); }
   .hud.tr2 { left: 50%; transform: translateX(20px); }
-  .hud.tr { left: 50%; transform: translateX(120px); }
+  .hud.tr { left: 50%; transform: translateX(100px); min-width: 80px; }
+  
+  /* Pause/Play button inside HUD */
+  .pause-play-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .pause-play-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .pause-play-btn:focus-visible {
+    outline: 1px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 1px;
+  }
 
   /* ===== Game Switcher (top-left) ===== */
   .game-switcher {

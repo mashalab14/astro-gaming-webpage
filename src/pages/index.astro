@@ -754,15 +754,46 @@ import Footer from '../components/Footer.astro';
       });
 
       // Minimal control model: no visible play/pause/restart. Menu + shortcuts.
-      let running = false; let secs = 0; let timerId = null;
-
       function showMenu() {
         if (typeof menuDlg.showModal === 'function') menuDlg.showModal();
         else menuDlg.setAttribute('open', '');
       }
       function closeMenu() { if (menuDlg.open) menuDlg.close(); }
-      function pauseGame() { running = false; pauseOverlay.classList.add('show'); if (timerId) { clearInterval(timerId); timerId = null; } }
-      function resumeGame() { running = true; pauseOverlay.classList.remove('show'); if (!timerId) { timerId = setInterval(() => { secs++; const mm = String(Math.floor(secs/60)).padStart(2,'0'); const ss = String(secs%60).padStart(2,'0'); const ht = document.getElementById('hudTime'); if (ht) ht.textContent = `${mm}:${ss}`; }, 1000); } }
+      function pauseGame() {
+        stopTimer();
+        
+        // Immediately show overlay
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        if (pauseOverlay) {
+          pauseOverlay.classList.add('show');
+        }
+        
+        // Update button state
+        const pausePlayBtn = document.getElementById('pausePlayBtn');
+        if (pausePlayBtn) {
+          pausePlayBtn.textContent = '▶';
+          pausePlayBtn.setAttribute('aria-label', 'Play');
+          pausePlayBtn.setAttribute('title', 'Play');
+        }
+      }
+      
+      function resumeGame() {
+        startTimer();
+        
+        // Immediately hide overlay
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        if (pauseOverlay) {
+          pauseOverlay.classList.remove('show');
+        }
+        
+        // Update button state
+        const pausePlayBtn = document.getElementById('pausePlayBtn');
+        if (pausePlayBtn) {
+          pausePlayBtn.textContent = '⏸';
+          pausePlayBtn.setAttribute('aria-label', 'Pause');
+          pausePlayBtn.setAttribute('title', 'Pause');
+        }
+      }
 
       const resumeBtn = document.getElementById('resumeBtn');
       const restartMenuBtn = document.getElementById('restartMenuBtn');
@@ -770,27 +801,44 @@ import Footer from '../components/Footer.astro';
 
       edgeMenuBtn?.addEventListener('click', () => { showMenu(); });
       resumeBtn?.addEventListener('click', () => { resumeGame(); closeMenu(); });
-      restartMenuBtn?.addEventListener('click', () => { secs = 0; const ht = document.getElementById('hudTime'); if (ht) ht.textContent = '00:00'; resumeGame(); closeMenu(); });
+      restartMenuBtn?.addEventListener('click', () => { 
+        resetTimer(); 
+        // Reset game state but keep paused state
+        if (gameEngine) {
+          gameEngine.startNewDeal();
+        }
+        closeMenu(); 
+      });
 
       // Wire up New Deal button to engine interface
       const newDealBtn = document.getElementById('newDealBtn');
       newDealBtn?.addEventListener('click', () => {
-        // Reset game stats
-        secs = 0;
-        const hudTime = document.getElementById('hudTime');
+        // Reset game stats and timer
+        resetTimer();
         const hudMoves = document.getElementById('hudMoves');
         const hudScore = document.getElementById('hudScore');
         const hudStock = document.getElementById('hudStock');
         
-        if (hudTime) hudTime.textContent = '00:00';
         if (hudMoves) hudMoves.textContent = 'Moves 0';
         if (hudScore) hudScore.textContent = 'Score 0';
         if (hudStock) hudStock.textContent = 'Stock 24';
         
         // Call engine's startNewDeal() when available
-        // gameEngine?.startNewDeal();
+        if (gameEngine) {
+          gameEngine.startNewDeal();
+        }
         
-        resumeGame();
+        // Don't automatically resume - let user click play when ready
+        // Just ensure pause state is correct
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        if (pauseOverlay) pauseOverlay.classList.remove('show');
+        
+        const pausePlayBtn = document.getElementById('pausePlayBtn');
+        if (pausePlayBtn) {
+          pausePlayBtn.textContent = '▶';
+          pausePlayBtn.setAttribute('aria-label', 'Play');
+          pausePlayBtn.setAttribute('title', 'Play');
+        }
       });
       openSettingsBtn?.addEventListener('click', () => { closeMenu(); markSelected(currentBg()); if (typeof settingsDlg.showModal === 'function') settingsDlg.showModal(); else settingsDlg.setAttribute('open',''); });
 
@@ -826,6 +874,14 @@ import Footer from '../components/Footer.astro';
           gameTimer.elapsed = Math.floor((Date.now() - gameTimer.startTime) / 1000);
           updateTimerDisplay();
         }, 1000);
+        
+        // Update pause/play button to show pause state
+        const pausePlayBtn = document.getElementById('pausePlayBtn');
+        if (pausePlayBtn) {
+          pausePlayBtn.textContent = '⏸';
+          pausePlayBtn.setAttribute('aria-label', 'Pause');
+          pausePlayBtn.setAttribute('title', 'Pause');
+        }
       }
       
       function stopTimer() {
@@ -847,8 +903,8 @@ import Footer from '../components/Footer.astro';
         const minutes = Math.floor(gameTimer.elapsed / 60);
         const seconds = gameTimer.elapsed % 60;
         const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        const hudTime = document.getElementById('hudTime');
-        if (hudTime) hudTime.textContent = timeStr;
+        const timeDisplay = document.getElementById('timeDisplay');
+        if (timeDisplay) timeDisplay.textContent = timeStr;
       }
       
       // Shell callbacks for game engine
@@ -1131,19 +1187,41 @@ import Footer from '../components/Footer.astro';
       
       // Initialize game engine when DOM is ready
       initializeGameEngine();
+      
+      // Start timer immediately so pause button works from the beginning
+      startTimer();
+      
+      // Pause/Play button functionality
+      const pausePlayBtn = document.getElementById('pausePlayBtn');
+      pausePlayBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (gameTimer.isRunning) {
+          pauseGame();
+        } else {
+          resumeGame();
+        }
+      });
+      
+      // Pause overlay click to resume
+      const pauseOverlayEl = document.getElementById('pauseOverlay');
+      pauseOverlayEl?.addEventListener('click', () => {
+        resumeGame();
+      });
 
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
         const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
         if (e.key === 'Escape') { e.preventDefault(); menuDlg.open ? closeMenu() : showMenu(); }
-        else if (e.key.toLowerCase() === 'p') { e.preventDefault(); running ? pauseGame() : resumeGame(); }
+        else if (e.key.toLowerCase() === 'p') { e.preventDefault(); gameTimer.isRunning ? pauseGame() : resumeGame(); }
         else if (e.key.toLowerCase() === 'r') { e.preventDefault(); resumeGame(); }
         else if (e.key === ' ') { e.preventDefault(); resumeGame(); }
       });
 
       // Auto-pause on focus loss
-      window.addEventListener('blur', () => { if (running) { running = false; pauseOverlay.classList.add('show'); } });
+      window.addEventListener('blur', () => { if (gameTimer.isRunning) { pauseGame(); } });
 
       // ===== Game Switcher logic =====
       const switcherBtn = document.getElementById('gameSwitcherBtn');

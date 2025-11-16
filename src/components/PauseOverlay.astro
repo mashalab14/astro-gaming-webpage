@@ -1,0 +1,56 @@
+---
+// Pause Overlay component - covers game canvas when paused
+---
+
+<div id="pauseOverlay" class="pause-overlay" aria-live="polite">
+  <div class="pause-content">
+    <div class="pause-icon">⏸</div>
+    <h2>Game Paused</h2>
+    <p>Click anywhere to resume or press the play button</p>
+  </div>
+</div>
+
+<style>
+  /* ===== Pause Overlay ===== */
+  .pause-overlay {
+    position: fixed;
+    top: 3rem;
+    left: 0;
+    width: 100vw;
+    height: calc(100vh - 3rem);
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    cursor: pointer;
+  }
+  
+  .pause-overlay.show {
+    display: flex;
+  }
+  
+  .pause-content {
+    text-align: center;
+    color: #e6e7eb;
+    user-select: none;
+  }
+  
+  .pause-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+  }
+  
+  .pause-content h2 {
+    font-size: 2rem;
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+  }
+  
+  .pause-content p {
+    font-size: 1.1rem;
+    margin: 0;
+    opacity: 0.7;
+  }
+</style>
