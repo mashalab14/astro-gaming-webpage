@@ -112,7 +112,8 @@ import AdArea from './AdArea.astro';
     border: none; 
     border-radius: 0; 
     height: 100vh; 
-    width: 100%; 
+    width: 100%;
+    overflow: hidden; /* Prevent any overflow issues */
   }
   .viewport::before { 
     content:""; 
@@ -144,10 +145,16 @@ import AdArea from './AdArea.astro';
     align-items: center;
     justify-content: space-between;
     padding: 0 20px;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5); /* More visible background for debugging */
     backdrop-filter: blur(4px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 10;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 20; /* Higher than HUD elements to ensure proper layering */
+    box-sizing: border-box;
+    overflow: hidden; /* Prevent content from overflowing */
+  }
+
+  .game-title {
+    flex-shrink: 0; /* Prevent title from shrinking */
   }
 
   .game-title h1 {
@@ -160,6 +167,8 @@ import AdArea from './AdArea.astro';
   .header-controls {
     display: flex;
     gap: 8px;
+    align-items: center;
+    flex-shrink: 0; /* Prevent controls from shrinking */
   }
 
   .header-btn {
@@ -172,6 +181,8 @@ import AdArea from './AdArea.astro';
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap; /* Prevent text wrapping */
+    position: relative; /* Ensure proper positioning within header */
   }
 
   .header-btn:hover {
@@ -235,7 +246,7 @@ import AdArea from './AdArea.astro';
     border:1px solid rgba(0,0,0,.35); 
     border-radius:4px; 
     padding:4px 6px;
-    z-index: 10; /* Ensure HUD appears above game content */
+    z-index: 5; /* Lower than header to avoid layering conflicts */
   }
   .hud.tl { top:68px; left:50%; transform: translateX(-220px); } /* Moved below header */
   .hud.tl2 { top:68px; left:50%; transform: translateX(-120px); }
