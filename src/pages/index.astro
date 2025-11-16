@@ -903,8 +903,8 @@ import Footer from '../components/Footer.astro';
         const minutes = Math.floor(gameTimer.elapsed / 60);
         const seconds = gameTimer.elapsed % 60;
         const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        const timeDisplay = document.getElementById('timeDisplay');
-        if (timeDisplay) timeDisplay.textContent = timeStr;
+        const pausePlayBtn = document.getElementById('pausePlayBtn');
+        if (pausePlayBtn) pausePlayBtn.textContent = timeStr;
       }
       
       // Shell callbacks for game engine
