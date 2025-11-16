@@ -16,15 +16,18 @@
 
   <!-- Game switcher dropdown (top-left) -->
   <div class="game-switcher">
-    <div class="switcher-trigger">Games</div>
-    <select id="gameSwitcherSelect" class="switcher-select" title="Switch game">
-      <option value="klondike-solitaire">Klondike Solitaire</option>
-      <option value="spider-solitaire">Spider Solitaire</option>
-      <option value="freecell">FreeCell</option>
-      <option value="hearts">Hearts</option>
-      <option value="minesweeper-classic">Minesweeper Classic</option>
-      <option value="2048">2048</option>
-    </select>
+    <div class="switcher-trigger" id="switcherTrigger">
+      <span id="currentGameName">Klondike Solitaire</span>
+      <span class="dropdown-arrow">▼</span>
+    </div>
+    <div class="switcher-dropdown" id="switcherDropdown">
+      <div class="switcher-option" data-value="klondike-solitaire">Klondike Solitaire</div>
+      <div class="switcher-option" data-value="spider-solitaire">Spider Solitaire</div>
+      <div class="switcher-option" data-value="freecell">FreeCell</div>
+      <div class="switcher-option" data-value="hearts">Hearts</div>
+      <div class="switcher-option" data-value="minesweeper-classic">Minesweeper Classic</div>
+      <div class="switcher-option" data-value="2048">2048</div>
+    </div>
   </div>
 
   <!-- Settings Button (top-right) -->
@@ -48,7 +51,7 @@
     font-size: 13px; 
     font-weight: 700;
     color: #e6e7eb; 
-    background: color-mix(in srgb, var(--table-bg) 75%, transparent); 
+    background: transparent; 
     border: 1px solid transparent; 
     border-radius: 4px; 
     padding: 4px 6px;
@@ -61,13 +64,14 @@
   .hud.tl { left: 50%; transform: translateX(-220px); min-width: 80px; }
   .hud.tl2 { left: 50%; transform: translateX(-120px); min-width: 80px; }
   .hud.tr2 { left: 50%; transform: translateX(20px); min-width: 80px; }
-  .hud.tr { left: 50%; transform: translateX(100px); min-width: 100px; width: 100px; }
+  .hud.tr { left: 50%; transform: translateX(100px); min-width: 110px; width: 110px; justify-content: space-between; }
   
   /* Time display */
   #timeDisplay {
     font-size: 12px;
     color: inherit;
-    margin-right: 6px;
+    flex: 1;
+    text-align: left;
   }
 
   /* Pause/Play button inside HUD */
@@ -77,17 +81,18 @@
     color: inherit;
     cursor: pointer;
     font-size: 12px;
-    padding: 2px 4px;
+    padding: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 3px;
     transition: background-color 0.2s ease;
     position: relative;
     z-index: 25;
     pointer-events: auto;
+    flex-shrink: 0;
   }
   
   .pause-play-btn:hover {
@@ -101,76 +106,95 @@
 
   /* ===== Game Switcher (top-left) ===== */
   .game-switcher {
-    position: relative;
+    position: absolute;
     top: 0.5rem;
     left: 1rem;
     z-index: 15;
-  }
-
-  .switcher-select {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
-    padding: 8px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
-    color: #e6e7eb;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    backdrop-filter: blur(4px);
-    min-width: 160px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 100;
+    width: 180px;
   }
 
   .switcher-trigger {
     padding: 8px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid transparent;
     border-radius: 6px;
-    background: color-mix(in srgb, var(--table-bg) 70%, transparent);
+    background: transparent;
     color: #e6e7eb;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
-    backdrop-filter: blur(4px);
-    min-width: 160px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     transition: background 0.2s ease, border-color 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .switcher-trigger:hover {
-    background: color-mix(in srgb, var(--table-bg) 80%, transparent);
+    background: color-mix(in srgb, var(--table-bg) 30%, transparent);
     border-color: rgba(255, 255, 255, 0.3);
   }
 
-  .game-switcher:hover .switcher-select {
+  .dropdown-arrow {
+    font-size: 10px;
+    margin-left: 8px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+
+  .switcher-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: color-mix(in srgb, var(--table-bg) 90%, #000);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+    transition: all 0.2s ease;
+    z-index: 100;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .game-switcher:hover .switcher-dropdown {
     opacity: 1;
-    pointer-events: auto;
+    visibility: visible;
+    transform: translateY(0);
   }
 
-  .switcher-select:hover {
-    background: color-mix(in srgb, var(--table-bg) 80%, transparent);
-    border-color: rgba(255, 255, 255, 0.3);
+  .game-switcher:hover .dropdown-arrow {
+    transform: rotate(180deg);
   }
 
-  .switcher-select:focus-visible {
-    outline: none;
-  }
-
-  .switcher-select option {
-    background: var(--table-bg);
+  .switcher-option {
+    padding: 10px 12px;
     color: #e6e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.1s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  
-  /* Ensure dropdown appears below the select box */
-  .switcher-select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
+
+  .switcher-option:hover {
+    background: color-mix(in srgb, var(--table-bg) 50%, transparent);
+  }
+
+  .switcher-option:first-child {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+  }
+
+  .switcher-option:last-child {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
   }
 
 
@@ -182,7 +206,7 @@
     right: 1rem;
     width: 2rem;
     height: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid transparent;
     border-radius: 6px;
     background: transparent;
     color: #e6e7eb;

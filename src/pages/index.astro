@@ -104,6 +104,13 @@ import Footer from '../components/Footer.astro';
       width: calc(100% - 32px);
       backdrop-filter: blur(8px);
       z-index: 1000;
+      /* Disable text selection */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
     }
     dialog.settings::backdrop { 
       background: rgba(0, 0, 0, 0.7); 
@@ -1252,14 +1259,50 @@ import Footer from '../components/Footer.astro';
       });
 
       // ===== Game Switcher logic =====
-      const gameSwitcherSelect = document.getElementById('gameSwitcherSelect');
+      const switcherTrigger = document.getElementById('switcherTrigger');
+      const switcherDropdown = document.getElementById('switcherDropdown');
+      const currentGameName = document.getElementById('currentGameName');
       
-      gameSwitcherSelect?.addEventListener('change', (e) => {
-        const selectedGame = e.target.value;
-        if (selectedGame) {
+      // Game data mapping
+      const gameData = {
+        'klondike-solitaire': 'Klondike Solitaire',
+        'spider-solitaire': 'Spider Solitaire',
+        'freecell': 'FreeCell',
+        'hearts': 'Hearts',
+        'minesweeper-classic': 'Minesweeper Classic',
+        '2048': '2048'
+      };
+      
+      // Load saved game from localStorage or default to klondike
+      const savedGame = localStorage.getItem('selectedGame') || 'klondike-solitaire';
+      if (currentGameName && gameData[savedGame]) {
+        currentGameName.textContent = gameData[savedGame];
+      }
+      
+      // Handle dropdown option clicks
+      switcherDropdown?.addEventListener('click', (e) => {
+        const option = e.target.closest('.switcher-option');
+        if (option && option.dataset.value) {
+          const selectedGame = option.dataset.value;
           console.log(`Switching to game: ${selectedGame}`);
-          // Navigate to the game page. Replace with router navigation if needed.
+          
+          // Save selection to localStorage
+          localStorage.setItem('selectedGame', selectedGame);
+          
+          // Update display
+          if (currentGameName && gameData[selectedGame]) {
+            currentGameName.textContent = gameData[selectedGame];
+          }
+          
+          // Navigate to the game page
           window.location.href = `/game/${selectedGame}`;
+        }
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!switcherTrigger?.contains(e.target) && !switcherDropdown?.contains(e.target)) {
+          // Dropdown will close automatically due to CSS hover, but this prevents conflicts
         }
       });
     });
