@@ -1193,18 +1193,39 @@ import Footer from '../components/Footer.astro';
       // Start timer immediately so pause button works from the beginning
       startTimer();
       
-      // Pause/Play button functionality
-      const pausePlayBtn = document.getElementById('pausePlayBtn');
-      pausePlayBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+      // Pause/Play button functionality with retry mechanism
+      function setupPausePlayButton() {
+        const pausePlayBtn = document.getElementById('pausePlayBtn');
+        console.log('Pause/Play button element:', pausePlayBtn);
         
-        if (gameTimer.isRunning) {
-          pauseGame();
+        if (pausePlayBtn) {
+          console.log('Adding event listener to pause/play button');
+          pausePlayBtn.addEventListener('click', (e) => {
+            console.log('Pause/Play button clicked!');
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (gameTimer.isRunning) {
+              console.log('Pausing game...');
+              pauseGame();
+            } else {
+              console.log('Resuming game...');
+              resumeGame();
+            }
+          });
+          return true;
         } else {
-          resumeGame();
+          console.error('Pause/Play button not found, retrying...');
+          return false;
         }
-      });
+      }
+      
+      // Try to setup the button, retry if not found
+      if (!setupPausePlayButton()) {
+        setTimeout(() => {
+          setupPausePlayButton();
+        }, 100);
+      }
       
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
