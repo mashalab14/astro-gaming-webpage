@@ -4,19 +4,7 @@ import AdArea from './AdArea.astro';
 ---
 
 <section class="viewport" id="game" aria-label="Game viewport" role="region">
-  <!-- Header Area -->
-  <div class="header-area">
-    <div class="game-title">
-      <h1 id="gameTitle">Klondike Solitaire</h1>
-    </div>
-    <div class="header-controls">
-      <button id="newGameBtn" class="header-btn" type="button" aria-label="New Game">New Game</button>
-      <button id="pauseBtn" class="header-btn" type="button" aria-label="Pause">Pause</button>
-      <button id="autoplayBtn" class="header-btn" type="button" aria-label="Toggle Autoplay">Autoplay</button>
-    </div>
-  </div>
-
-  <!-- Game Area (80% width) -->
+  <!-- Game Area (full viewport) -->
   <div class="game-area">
     <div class="stage" id="stage">
       <!-- Game engine will be mounted here -->
@@ -134,84 +122,19 @@ import AdArea from './AdArea.astro';
     background-size: 2px 2px; 
     opacity:.5; 
   }
-  /* ===== Header Area ===== */
-  .header-area {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    background: rgba(0, 0, 0, 0.5); /* More visible background for debugging */
-    backdrop-filter: blur(4px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-    z-index: 20; /* Higher than HUD elements to ensure proper layering */
-    box-sizing: border-box;
-    overflow: hidden; /* Prevent content from overflowing */
-  }
-
-  .game-title {
-    flex-shrink: 0; /* Prevent title from shrinking */
-  }
-
-  .game-title h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #e6e7eb;
-  }
-
-  .header-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0; /* Prevent controls from shrinking */
-  }
-
-  .header-btn {
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    color: #e6e7eb;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap; /* Prevent text wrapping */
-    position: relative; /* Ensure proper positioning within header */
-  }
-
-  .header-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
-  }
-
-  .header-btn:active {
-    transform: translateY(1px);
-  }
-
   /* ===== Game Area (full width) ===== */
   .game-area {
     width: 100%;
     height: 100%;
     position: relative;
-    padding-top: 60px; /* Account for header */
-    padding-bottom: 80px; /* Reserve space for bottom controls */
-    box-sizing: border-box;
   }
 
   .stage { 
-    width: 100%;
-    height: 100%;
-    max-height: calc(100vh - 200px); /* Constrain height to viewport minus header/controls space */
+    aspect-ratio: 16 / 9; 
+    width: 100%; 
     display: grid; 
     place-items: center; 
-    color: #c8cdd4;
-    box-sizing: border-box;
+    color: #c8cdd4; 
   }
   .stage .label { 
     font-size: 14px; 
@@ -248,10 +171,10 @@ import AdArea from './AdArea.astro';
     padding:4px 6px;
     z-index: 5; /* Lower than header to avoid layering conflicts */
   }
-  .hud.tl { top:68px; left:50%; transform: translateX(-220px); } /* Moved below header */
-  .hud.tl2 { top:68px; left:50%; transform: translateX(-120px); }
-  .hud.tr2 { top:68px; left:50%; transform: translateX(20px); }
-  .hud.tr { top:68px; left:50%; transform: translateX(120px); }
+  .hud.tl { top:8px; left:50%; transform: translateX(-220px); }
+  .hud.tl2 { top:8px; left:50%; transform: translateX(-120px); }
+  .hud.tr2 { top:8px; left:50%; transform: translateX(20px); }
+  .hud.tr { top:8px; left:50%; transform: translateX(120px); }
   .hud.bl { bottom:8px; left:8px; }
   .hud.br { bottom:8px; right:8px; }
 
@@ -350,7 +273,7 @@ import AdArea from './AdArea.astro';
   /* ===== Game Switcher (top-left) ===== */
   .game-switcher {
     position: absolute;
-    top: 76px; /* Position below header area */
+    top: 1rem;
     left: 1rem;
     z-index: 10;
   }
@@ -496,7 +419,7 @@ import AdArea from './AdArea.astro';
   /* ===== Settings Button (top-right) ===== */
   .settings-btn {
     position: absolute;
-    top: 76px; /* Position below header area */
+    top: 1rem;
     right: 1rem;
     width: 3rem;
     height: 3rem;
@@ -526,7 +449,7 @@ import AdArea from './AdArea.astro';
   /* ===== Sign Up Button (next to settings) ===== */
   .signup-btn {
     position: absolute;
-    top: 76px; /* Position below header area */
+    top: 1rem;
     right: 5rem; /* Position to the left of settings button */
     padding: 8px 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);

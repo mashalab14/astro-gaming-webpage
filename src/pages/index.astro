@@ -1,6 +1,5 @@
 ---
 // Sample Game - Astro implementation
-import Header from '../components/Header.astro';
 import GameSurface from '../components/GameSurface.astro';
 import WinModal from '../components/WinModal.astro';
 import HowToPlay from '../components/HowToPlay.astro';
@@ -48,7 +47,7 @@ import Footer from '../components/Footer.astro';
     .container.full { max-width: none; padding: 0; }
     .visually-hidden { position: absolute; width:1px; height:1px; margin:-1px; border:0; padding:0; overflow:hidden; clip: rect(0 0 0 0); white-space:nowrap; }
 
-    /* ===== Header styles moved to Header.astro component ===== */
+
 
     /* ===== Page layout ===== */
     main { padding: 16px 0 24px; }
@@ -281,8 +280,6 @@ import Footer from '../components/Footer.astro';
 </head>
 <body data-game="sample-game">
   <a class="visually-hidden" href="#game">Skip to game</a>
-
-  <!-- <Header /> -->
 
   <!-- Game Surface takes full viewport -->
   <GameSurface />
@@ -1083,56 +1080,7 @@ import Footer from '../components/Footer.astro';
         return localStorage.getItem(`hud.${hudElement}`) !== 'false';
       }
       
-      // Header button event listeners
-      const newGameBtn = document.getElementById('newGameBtn');
-      const pauseBtn = document.getElementById('pauseBtn');
-      const autoplayBtn = document.getElementById('autoplayBtn');
-      
-      newGameBtn?.addEventListener('click', () => {
-        console.log('🎮 New Game button clicked');
-        if (gameEngine) {
-          gameEngine.startNewDeal();
-        }
-      });
-      
-      pauseBtn?.addEventListener('click', () => {
-        console.log('⏸️ Pause button clicked');
-        if (gameTimer.isRunning) {
-          pauseGame();
-          pauseBtn.textContent = 'Resume';
-        } else {
-          resumeGame();
-          pauseBtn.textContent = 'Pause';
-        }
-      });
-      
-      autoplayBtn?.addEventListener('click', () => {
-        console.log('🤖 Autoplay button clicked');
-        // Toggle autoplay mode
-        const currentAutoplay = gameAutoplayPreference();
-        const newAutoplay = currentAutoplay === 'off' ? 'whenObvious' : 'off';
-        localStorage.setItem('game.autoplay', newAutoplay);
-        
-        // Update button text
-        autoplayBtn.textContent = newAutoplay === 'off' ? 'Autoplay' : 'Auto: ' + newAutoplay;
-        
-        // Notify game engine of preference change
-        if (gameEngine && gameEngine.updateOptions) {
-          gameEngine.updateOptions({ autoplay: newAutoplay });
-        }
-      });
-      
-      // Initialize header button text
-      function initializeHeaderButtons() {
-        if (autoplayBtn) {
-          const autoplay = gameAutoplayPreference();
-          autoplayBtn.textContent = autoplay === 'off' ? 'Autoplay' : 'Auto: ' + autoplay;
-        }
-        
-        if (pauseBtn) {
-          pauseBtn.textContent = gameTimer.isRunning ? 'Pause' : 'Resume';
-        }
-      }
+      // Game controls integrated with existing New Deal button
       
       // Win modal event listeners
       const playAgainBtn = document.getElementById('playAgainBtn');
@@ -1166,9 +1114,8 @@ import Footer from '../components/Footer.astro';
         }
       });
       
-      // Initialize everything when DOM is ready
+      // Initialize game engine when DOM is ready
       initializeGameEngine();
-      initializeHeaderButtons();
 
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
