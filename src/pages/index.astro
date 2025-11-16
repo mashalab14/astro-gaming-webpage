@@ -39,7 +39,20 @@ import Footer from '../components/Footer.astro';
     /* ===== Reset-lite ===== */
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; overflow-x: hidden; }
-    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.4; }
+    body { 
+      margin: 0; 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: var(--sans); 
+      line-height: 1.4;
+      /* Disable text selection and context menu */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
     a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
     img { max-width: 100%; display: block; }
@@ -895,10 +908,12 @@ import Footer from '../components/Footer.astro';
             pausePlayBtn.innerHTML = `⏸`;
             pausePlayBtn.setAttribute('aria-label', 'Pause');
             pausePlayBtn.setAttribute('title', 'Pause');
+            pausePlayBtn.style.display = 'flex';
           } else {
-            pausePlayBtn.innerHTML = `▶`;
-            pausePlayBtn.setAttribute('aria-label', 'Start/Resume');
-            pausePlayBtn.setAttribute('title', 'Start/Resume');
+            pausePlayBtn.innerHTML = ``;
+            pausePlayBtn.setAttribute('aria-label', 'Start');
+            pausePlayBtn.setAttribute('title', 'Start');
+            pausePlayBtn.style.display = 'none';
           }
         }
       }
