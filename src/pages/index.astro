@@ -415,7 +415,7 @@ import Footer from '../components/Footer.astro';
 
   <script>
     // Minimal demo logic + table background preference.
-    (function() {
+    document.addEventListener('DOMContentLoaded', function() {
       const root = document.documentElement;
       
       const edgeMenuBtn = document.getElementById('edgeMenuBtn');
@@ -1244,7 +1244,7 @@ import Footer from '../components/Footer.astro';
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(); }
       });
       gsSearch?.addEventListener('input', (e) => populateSections(e.target.value));
-    })();
+    });
   </script>
 </body>
 </html>
