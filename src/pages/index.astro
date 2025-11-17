@@ -18,6 +18,9 @@ import Footer from '../components/Footer.astro';
   <meta name="description" content="Play Sample Game online. Clean, fast page shell with simple controls, leaderboard, and related games." />
   <meta name="theme-color" content="#0b0c0f" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
   <meta name="generator" content={Astro.generator} />
   <style>
     /* ===== Base tokens - flat, no shadows ===== */
@@ -30,7 +33,7 @@ import Footer from '../components/Footer.astro';
       --surface: #f9f9fb;
       --radius: 4px;
       --table-bg: #4f7942; /* fern green */
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, Noto Sans;
+      --sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     @media (prefers-color-scheme: dark) {
       :root { --bg:#0b0c0f; --text:#e6e7eb; --muted:#9aa3ad; --border:#1a1d22; --surface:#121418; --link:#6aa1ff; }
@@ -829,9 +832,9 @@ import Footer from '../components/Footer.astro';
         const hudScore = document.getElementById('hudScore');
         const hudStock = document.getElementById('hudStock');
         
-        if (hudMoves) hudMoves.textContent = 'Moves 0';
-        if (hudScore) hudScore.textContent = 'Score 0';
-        if (hudStock) hudStock.textContent = 'Stock 24';
+        if (hudMoves) hudMoves.textContent = 'Moves: 0';
+        if (hudScore) hudScore.textContent = 'Score: 0';
+        if (hudStock) hudStock.textContent = 'Stock: 24';
         
         // Call engine's startNewDeal() when available
         if (gameEngine) {
@@ -942,10 +945,10 @@ import Footer from '../components/Footer.astro';
           const hudScore = document.getElementById('hudScore');
           const hudStock = document.getElementById('hudStock');
           
-          if (hudMoves) hudMoves.textContent = `Moves ${moveData.moves}`;
-          if (hudScore) hudScore.textContent = `Score ${moveData.score}`;
+          if (hudMoves) hudMoves.textContent = `Moves: ${moveData.moves}`;
+          if (hudScore) hudScore.textContent = `Score: ${moveData.score}`;
           if (hudStock && moveData.stockCount !== undefined) {
-            hudStock.textContent = `Stock ${moveData.stockCount}`;
+            hudStock.textContent = `Stock: ${moveData.stockCount}`;
           }
         },
         
