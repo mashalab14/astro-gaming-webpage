@@ -930,6 +930,44 @@ import Footer from '../components/Footer.astro';
           pausePlayBtn.setAttribute('title', 'Play');
         }
       });
+
+      // More dropdown functionality
+      const moreDropdown = document.querySelector('.more-dropdown');
+      const moreDropdownMenu = document.getElementById('moreDropdownMenu');
+      
+      // Handle dropdown option clicks
+      moreDropdownMenu?.addEventListener('click', (e) => {
+        const option = (e.target as Element).closest('.more-option') as HTMLElement;
+        if (option && option.dataset.value) {
+          const selectedOption = option.dataset.value;
+          console.log(`More option selected: ${selectedOption}`);
+          
+          // Handle different options
+          switch (selectedOption) {
+            case 'account':
+              console.log('Opening Account...');
+              // TODO: Implement account functionality
+              break;
+            case 'leaderboard':
+              console.log('Opening Leaderboard...');
+              // TODO: Implement leaderboard functionality
+              break;
+            case 'daily-challenge':
+              console.log('Opening Daily Challenge...');
+              // TODO: Implement daily challenge functionality
+              break;
+            case 'rules':
+              console.log('Opening Rules...');
+              // TODO: Implement rules functionality
+              break;
+            case 'help':
+              console.log('Opening Help...');
+              // TODO: Implement help functionality
+              break;
+          }
+        }
+      });
+
       openSettingsBtn?.addEventListener('click', () => { closeMenu(); markSelected(currentBg()); if (typeof settingsDlg.showModal === 'function') settingsDlg.showModal(); else settingsDlg.setAttribute('open',''); });
 
       // ===== GAME ENGINE INTEGRATION =====
