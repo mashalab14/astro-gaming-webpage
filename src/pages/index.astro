@@ -933,7 +933,23 @@ import Footer from '../components/Footer.astro';
 
       // More dropdown functionality
       const moreDropdown = document.querySelector('.more-dropdown');
+      const moreTrigger = document.getElementById('moreTrigger');
       const moreDropdownMenu = document.getElementById('moreDropdownMenu');
+      
+      // Toggle dropdown on trigger click
+      moreTrigger?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (moreDropdown) {
+          const isOpen = moreDropdown.classList.contains('open');
+          if (isOpen) {
+            moreDropdown.classList.remove('open');
+          } else {
+            moreDropdown.classList.add('open');
+          }
+        }
+      });
       
       // Handle dropdown option clicks
       moreDropdownMenu?.addEventListener('click', (e) => {
@@ -941,6 +957,11 @@ import Footer from '../components/Footer.astro';
         if (option && option.dataset.value) {
           const selectedOption = option.dataset.value;
           console.log(`More option selected: ${selectedOption}`);
+          
+          // Close dropdown after selection
+          if (moreDropdown) {
+            moreDropdown.classList.remove('open');
+          }
           
           // Handle different options
           switch (selectedOption) {
@@ -965,6 +986,13 @@ import Footer from '../components/Footer.astro';
               // TODO: Implement help functionality
               break;
           }
+        }
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (moreDropdown && !moreDropdown.contains(e.target as Node)) {
+          moreDropdown.classList.remove('open');
         }
       });
 

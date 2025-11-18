@@ -83,10 +83,6 @@
     z-index: 15;
   }
 
-  .more-dropdown:hover {
-    z-index: 1001;
-  }
-
   .more-trigger {
     padding: 8px 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -105,6 +101,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    box-sizing: border-box;
   }
 
   .more-trigger:hover {
@@ -162,27 +159,14 @@
     z-index: 1001;
   }
 
-  /* Enhanced hover area - includes space between trigger and dropdown */
-  .more-dropdown::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    height: 16px;
-    z-index: 999;
-    pointer-events: auto;
-  }
 
-  .more-dropdown:hover .more-dropdown-menu,
-  .more-dropdown.open .more-dropdown-menu,
-  .more-dropdown-menu:hover {
+
+  .more-dropdown.open .more-dropdown-menu {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
   }
 
-  .more-dropdown:hover .dropdown-arrow,
   .more-dropdown.open .dropdown-arrow {
     transform: rotate(180deg);
   }
