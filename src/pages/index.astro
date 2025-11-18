@@ -936,18 +936,31 @@ import Footer from '../components/Footer.astro';
       const moreTrigger = document.getElementById('moreTrigger');
       const moreDropdownMenu = document.getElementById('moreDropdownMenu');
       
+      console.log('More dropdown elements found:');
+      console.log('moreDropdown:', moreDropdown);
+      console.log('moreTrigger:', moreTrigger);
+      console.log('moreDropdownMenu:', moreDropdownMenu);
+      
       // Toggle dropdown on trigger click
       moreTrigger?.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         
+        console.log('More trigger clicked!');
+        
         if (moreDropdown) {
           const isOpen = moreDropdown.classList.contains('open');
+          console.log('Dropdown current state:', isOpen ? 'open' : 'closed');
+          
           if (isOpen) {
             moreDropdown.classList.remove('open');
+            console.log('Dropdown closed');
           } else {
             moreDropdown.classList.add('open');
+            console.log('Dropdown opened');
           }
+        } else {
+          console.error('More dropdown element not found!');
         }
       });
       
