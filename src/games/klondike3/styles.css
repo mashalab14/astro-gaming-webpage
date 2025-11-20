@@ -7,15 +7,12 @@
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   
-  /* Calculate card dimensions based on available space */
-  /* Formula: ((Canvas width - (n+1)*2rem)/n) where n=7 columns */
   --tableau-columns: 7;
   --column-gap: 2rem;
-  --canvas-width: 100%;
-  --total-gaps: calc((var(--tableau-columns) + 1) * var(--column-gap));
-  --available-width: calc(var(--canvas-width) - var(--total-gaps));
-  --card-width: calc(var(--available-width) / var(--tableau-columns));
-  --card-height: calc(var(--card-width) * 1.4); /* Standard card aspect ratio */
+
+  /* Card size: roughly 7 cards across, capped for large screens */
+  --card-width: min(90px, calc((100vw - 64px) / 7));
+  --card-height: calc(var(--card-width) * 1.4);
 }
 
 .klondike-game-area {
