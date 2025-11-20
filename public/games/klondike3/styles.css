@@ -38,25 +38,27 @@
 /* Top row: Stock/Waste and Foundations */
 .klondike-top-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
   height: 100px;
+  margin-bottom: 1.5rem; /* Clear vertical gap before tableau */
 }
 
 .klondike-stock-waste {
   display: flex;
-  gap: 12px;
+  gap: var(--column-gap);
+  margin-right: calc(5 * (var(--card-width) + var(--column-gap))); /* Align with first two tableau columns */
 }
 
 .klondike-foundations {
   display: flex;
   gap: var(--column-gap);
+  /* Foundations align with last 4 tableau columns */
 }
 
 /* Card piles styling */
 .klondike-stock-pile,
-.klondike-waste-pile,
-.klondike-foundation {
+.klondike-waste-pile {
   width: var(--card-width);
   height: var(--card-height);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -68,10 +70,26 @@
   box-sizing: border-box;
 }
 
-.klondike-stock-pile:hover,
-.klondike-foundation:hover {
+.klondike-foundation {
+  width: var(--card-width);
+  height: var(--card-height);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.klondike-stock-pile:hover {
   border-color: rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.05);
+}
+
+.klondike-foundation:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .klondike-waste-pile {
@@ -188,9 +206,16 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-.klondike-empty-tableau {
-  border-color: rgba(255, 255, 255, 0.1);
+/* Foundation placeholders have bigger icons */
+.klondike-foundation .klondike-card-placeholder {
+  font-size: 24px;
+  border: none;
   background: transparent;
+}
+
+.klondike-empty-tableau {
+  border: none !important;
+  background: transparent !important;
   min-height: 95px;
   font-size: 10px;
 }

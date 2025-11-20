@@ -158,11 +158,20 @@ class Klondike3Engine {
           this.handleCardDoubleClick(card);
         };
         
-        // Single click handler for selection
+        // Single click handler for selection and auto-move
         const clickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
           this.handleCardClick(card);
+          
+          // Try auto-move to foundation on single click
+          const location = card.dataset.location;
+          if (location === 'waste') {
+            this.tryMoveWasteToFoundation();
+          } else if (location.startsWith('tableau-')) {
+            const colIndex = parseInt(location.split('-')[1]);
+            this.tryMoveTableauToFoundation(colIndex);
+          }
         };
         
         // Drag start handler
@@ -807,7 +816,7 @@ class Klondike3Engine {
     if (this.gameState.stock.length > 0) {
       const stockCard = document.createElement('div');
       stockCard.className = 'klondike-card klondike-card-back';
-      stockCard.textContent = this.gameState.stock.length;
+      stockCard.innerHTML = '<div class="klondike-card-back-pattern">🂠</div>';
       stockPile.appendChild(stockCard);
     } else {
       stockPile.innerHTML = '<div class="klondike-card-placeholder">↻</div>';
@@ -827,8 +836,6 @@ class Klondike3Engine {
         }
         wastePile.appendChild(cardElement);
       });
-    } else {
-      wastePile.innerHTML = '<div class="klondike-card-placeholder">Waste</div>';
     }
   }
 

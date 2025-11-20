@@ -112,14 +112,32 @@ class Klondike3Engine {
   attachEventListeners() {
     const stockPile = this.rootElement.querySelector('#stock-pile');
     
+    if (!stockPile) {
+      console.error('Stock pile not found!');
+      return;
+    }
+    
     // Stock pile click handler
     const stockClickHandler = (e) => {
+      console.log('Stock pile clicked!');
       e.preventDefault();
+      e.stopPropagation();
       this.handleStockClick();
     };
     
     stockPile.addEventListener('click', stockClickHandler);
     this.eventListeners.push({ element: stockPile, event: 'click', handler: stockClickHandler });
+    
+    // Add visual feedback on click
+    stockPile.addEventListener('mousedown', () => {
+      stockPile.style.transform = 'scale(0.95)';
+    });
+    
+    stockPile.addEventListener('mouseup', () => {
+      stockPile.style.transform = 'scale(1)';
+    });
+    
+    console.log('Stock pile click listener attached');
 
     // Add drag and drop handlers for cards (will be added when cards are created)
     this.attachCardEventListeners();
@@ -140,11 +158,20 @@ class Klondike3Engine {
           this.handleCardDoubleClick(card);
         };
         
-        // Single click handler for selection
+        // Single click handler for selection and auto-move
         const clickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
           this.handleCardClick(card);
+          
+          // Try auto-move to foundation on single click
+          const location = card.dataset.location;
+          if (location === 'waste') {
+            this.tryMoveWasteToFoundation();
+          } else if (location.startsWith('tableau-')) {
+            const colIndex = parseInt(location.split('-')[1]);
+            this.tryMoveTableauToFoundation(colIndex);
+          }
         };
         
         // Drag start handler
@@ -346,9 +373,12 @@ class Klondike3Engine {
    * Handle stock pile click (draw 3 cards)
    */
   handleStockClick() {
+    console.log('handleStockClick called - Stock:', this.gameState.stock.length, 'Waste:', this.gameState.waste.length);
+    
     if (this.gameState.stock.length > 0) {
       // Draw up to 3 cards from stock to waste
       const drawCount = Math.min(3, this.gameState.stock.length);
+      console.log('Drawing', drawCount, 'cards from stock');
       
       for (let i = 0; i < drawCount; i++) {
         const card = this.gameState.stock.pop();
@@ -357,6 +387,7 @@ class Klondike3Engine {
       }
     } else if (this.gameState.waste.length > 0) {
       // Recycle waste back to stock
+      console.log('Recycling waste back to stock');
       while (this.gameState.waste.length > 0) {
         const card = this.gameState.waste.pop();
         card.faceUp = false;
@@ -785,7 +816,7 @@ class Klondike3Engine {
     if (this.gameState.stock.length > 0) {
       const stockCard = document.createElement('div');
       stockCard.className = 'klondike-card klondike-card-back';
-      stockCard.textContent = this.gameState.stock.length;
+      stockCard.innerHTML = '<div class="klondike-card-back-pattern">🂠</div>';
       stockPile.appendChild(stockCard);
     } else {
       stockPile.innerHTML = '<div class="klondike-card-placeholder">↻</div>';
@@ -805,8 +836,6 @@ class Klondike3Engine {
         }
         wastePile.appendChild(cardElement);
       });
-    } else {
-      wastePile.innerHTML = '<div class="klondike-card-placeholder">Waste</div>';
     }
   }
 
