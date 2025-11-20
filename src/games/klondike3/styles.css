@@ -1,0 +1,241 @@
+/* Klondike Draw 3 Solitaire Styles */
+
+.klondike-root {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.klondike-game-area {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Top row: Stock/Waste and Foundations */
+.klondike-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  height: 100px;
+}
+
+.klondike-stock-waste {
+  display: flex;
+  gap: 12px;
+}
+
+.klondike-foundations {
+  display: flex;
+  gap: 8px;
+}
+
+/* Card piles styling */
+.klondike-stock-pile,
+.klondike-waste-pile,
+.klondike-foundation {
+  width: 70px;
+  height: 95px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.klondike-stock-pile:hover,
+.klondike-foundation:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.klondike-waste-pile {
+  cursor: default;
+  position: relative;
+  overflow: visible;
+}
+
+/* Tableau columns */
+.klondike-tableau {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 300px;
+}
+
+.klondike-tableau-column {
+  flex: 1;
+  min-height: 120px;
+  position: relative;
+}
+
+/* Card styling */
+.klondike-card {
+  width: 70px;
+  height: 95px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.klondike-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.klondike-card-active {
+  border-color: #4CAF50;
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+}
+
+.klondike-card-back {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.klondike-card-back-pattern {
+  font-size: 40px;
+  opacity: 0.3;
+}
+
+.klondike-card-face-up {
+  background: #ffffff;
+  color: #333;
+}
+
+.klondike-card-content {
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.klondike-card-content.red {
+  color: #d32f2f;
+}
+
+.klondike-card-content.black {
+  color: #333333;
+}
+
+.klondike-card-rank {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.klondike-card-suit {
+  font-size: 20px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Card placeholders */
+.klondike-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 500;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.klondike-empty-tableau {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
+  min-height: 95px;
+  font-size: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .klondike-root {
+    padding: 8px;
+  }
+  
+  .klondike-game-area {
+    gap: 16px;
+  }
+  
+  .klondike-card,
+  .klondike-stock-pile,
+  .klondike-waste-pile,
+  .klondike-foundation {
+    width: 50px;
+    height: 68px;
+  }
+  
+  .klondike-card-suit {
+    font-size: 14px;
+  }
+  
+  .klondike-card-rank {
+    font-size: 10px;
+  }
+  
+  .klondike-foundations {
+    gap: 4px;
+  }
+  
+  .klondike-tableau {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .klondike-top-row {
+    flex-direction: column;
+    gap: 12px;
+    height: auto;
+  }
+  
+  .klondike-stock-waste {
+    align-self: flex-start;
+  }
+  
+  .klondike-foundations {
+    align-self: flex-end;
+  }
+  
+  .klondike-card,
+  .klondike-stock-pile,
+  .klondike-waste-pile,
+  .klondike-foundation {
+    width: 42px;
+    height: 58px;
+  }
+  
+  .klondike-card-suit {
+    font-size: 12px;
+  }
+  
+  .klondike-card-rank {
+    font-size: 8px;
+  }
+}

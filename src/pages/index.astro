@@ -343,6 +343,13 @@ import Footer from '../components/Footer.astro';
     .menu .list { display: flex; flex-direction: column; gap: 8px; }
     .menu .btn { width: 100%; text-align: left; height: 36px; }
   </style>
+  
+  <!-- Klondike Game Styles -->
+  <link rel="stylesheet" href="/games/klondike3/styles.css">
+  
+  <!-- Klondike Game Engine -->
+  <script is:inline src="/games/klondike3/klondike3Engine.js"></script>
+
 </head>
 <body data-game="sample-game">
   <a class="visually-hidden" href="#game">Skip to game</a>
@@ -1162,15 +1169,7 @@ import Footer from '../components/Footer.astro';
         return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
       }
       
-      // Simple fake game implementation
-      const fakeGameState = {
-        moves: 0,
-        score: 0,
-        stockCount: 24,
-        isWon: false
-      };
-      
-      // Initialize the fake game engine
+      // Initialize the Klondike game engine
       function initializeGameEngine() {
         const gameEngineMount = document.getElementById('stage');
         if (!gameEngineMount) {
@@ -1178,136 +1177,17 @@ import Footer from '../components/Footer.astro';
           return;
         }
         
-        // Create fake game interface
-        gameEngineMount.innerHTML = `
-          <div style="
-            padding: 20px;
-            text-align: center;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            max-height: 100%;
-            overflow: hidden;
-            box-sizing: border-box;
-          ">
-            <div style="
-              font-size: 20px;
-              font-weight: bold;
-              color: #e6e7eb;
-              margin-bottom: 8px;
-            ">
-              🎮 Klondike Solitaire
-            </div>
-            
-            <div style="
-              font-size: 12px;
-              color: #9aa3ad;
-              margin-bottom: 16px;
-              line-height: 1.3;
-            ">
-              Fake game for testing shell integration<br>
-              Click buttons below to simulate game actions
-            </div>
-
-            <div style="
-              display: grid;
-              grid-template-columns: repeat(4, 50px);
-              gap: 8px;
-              margin-bottom: 16px;
-              justify-content: center;
-            ">
-              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♠️</div>
-              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♥️</div>
-              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♦️</div>
-              <div style="width:50px;height:65px;border:2px solid #555;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;color:#888;font-size:18px;">♣️</div>
-            </div>
-
-            <div style="
-              display: flex;
-              gap: 10px;
-              flex-wrap: wrap;
-              justify-content: center;
-            ">
-              <button id="fakeMove" style="
-                padding: 6px 12px;
-                border: 1px solid rgba(76, 175, 80, 0.5);
-                border-radius: 4px;
-                background: rgba(76, 175, 80, 0.2);
-                color: #4CAF50;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: 500;
-              ">
-                Make Move (+10)
-              </button>
-              
-              <button id="fakeWin" style="
-                padding: 6px 12px;
-                border: 1px solid rgba(255, 193, 7, 0.5);
-                border-radius: 4px;
-                background: rgba(255, 193, 7, 0.2);
-                color: #FFC107;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: 500;
-              ">
-                Trigger Win
-              </button>
-            </div>
-          </div>
-        `;
+        // Check if Klondike3Engine is available
+        if (typeof Klondike3Engine === 'undefined') {
+          console.error('Klondike3Engine not loaded');
+          return;
+        }
         
-        // Add event listeners for fake game actions
-        const fakeMoveBtn = document.getElementById('fakeMove');
-        const fakeWinBtn = document.getElementById('fakeWin');
+        // Create and mount the Klondike engine
+        gameEngine = new Klondike3Engine();
+        gameEngine.mount(gameEngineMount, shellCallbacks);
         
-        fakeMoveBtn?.addEventListener('click', () => {
-          if (fakeGameState.moves === 0) {
-            shellCallbacks.onFirstMove();
-          }
-          
-          fakeGameState.moves++;
-          fakeGameState.score += 10;
-          fakeGameState.stockCount = Math.max(0, fakeGameState.stockCount - 1);
-          
-          shellCallbacks.onMove({
-            moves: fakeGameState.moves,
-            score: fakeGameState.score,
-            stockCount: fakeGameState.stockCount
-          });
-        });
-        
-        fakeWinBtn?.addEventListener('click', () => {
-          fakeGameState.isWon = true;
-          shellCallbacks.onWin({
-            moves: fakeGameState.moves,
-            score: fakeGameState.score,
-            timeSeconds: gameTimer.elapsed
-          });
-        });
-        
-        // Initialize game engine object for compatibility
-        gameEngine = {
-          startNewDeal: () => {
-            console.log('🔄 Starting new deal');
-            fakeGameState.moves = 0;
-            fakeGameState.score = 0;
-            fakeGameState.stockCount = 24;
-            fakeGameState.isWon = false;
-            shellCallbacks.onReset();
-          },
-          
-          updateOptions: (newOptions) => {
-            console.log('⚙️ Updating game options:', newOptions);
-          },
-          
-          destroy: () => {
-            console.log('💥 Game engine destroyed');
-          }
-        };
-        
-        console.log('🎮 Fake game engine initialized');
+        console.log('🎮 Klondike Draw 3 Solitaire engine initialized');
       }
       
       // Helper functions for preferences (renamed to avoid conflicts)
@@ -1366,7 +1246,10 @@ import Footer from '../components/Footer.astro';
       });
       
       // Initialize game engine when DOM is ready
-      initializeGameEngine();
+      // Delay initialization to ensure DOM and scripts are loaded
+      setTimeout(() => {
+        initializeGameEngine();
+      }, 100);
       
       // Timer will start when user first clicks the play button
       
