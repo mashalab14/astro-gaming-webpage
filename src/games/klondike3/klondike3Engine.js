@@ -11,6 +11,8 @@ class Klondike3Engine {
     this.eventListeners = [];
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    this.selectedCard = null;
+    this.dragData = null;
   }
 
   /**
@@ -131,17 +133,129 @@ class Klondike3Engine {
     
     cards.forEach(card => {
       if (!card.dataset.hasListeners) {
+        // Double-click handler for auto-move to foundation
+        const dblClickHandler = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleCardDoubleClick(card);
+        };
+        
+        // Single click handler for selection
         const clickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
           this.handleCardClick(card);
         };
         
+        // Drag start handler
+        const dragStartHandler = (e) => {
+          this.handleDragStart(e, card);
+        };
+        
+        // Make card draggable if it's face up and not in foundation (or top foundation card)
+        const location = card.dataset.location;
+        const isFaceUp = card.classList.contains('klondike-card-face-up');
+        
+        if (isFaceUp && this.isCardDraggable(card)) {
+          card.draggable = true;
+          card.addEventListener('dragstart', dragStartHandler);
+          this.eventListeners.push({ element: card, event: 'dragstart', handler: dragStartHandler });
+        }
+        
         card.addEventListener('click', clickHandler);
+        card.addEventListener('dblclick', dblClickHandler);
         card.dataset.hasListeners = 'true';
+        
         this.eventListeners.push({ element: card, event: 'click', handler: clickHandler });
+        this.eventListeners.push({ element: card, event: 'dblclick', handler: dblClickHandler });
       }
     });
+    
+    // Attach drop zone listeners to piles
+    this.attachDropZoneListeners();
+  }
+
+  /**
+   * Check if a card is draggable
+   */
+  isCardDraggable(cardElement) {
+    const location = cardElement.dataset.location;
+    const cardId = cardElement.dataset.cardId;
+    
+    if (location === 'waste') {
+      // Only top waste card is draggable
+      return this.gameState.waste.length > 0 && 
+             this.gameState.waste[this.gameState.waste.length - 1].id === cardId;
+    } else if (location.startsWith('foundation-')) {
+      // Foundation cards are draggable
+      return true;
+    } else if (location.startsWith('tableau-')) {
+      const colIndex = parseInt(location.split('-')[1]);
+      const column = this.gameState.tableau[colIndex];
+      
+      // Find the card's position in the column
+      const cardIndex = column.findIndex(card => card.id === cardId);
+      if (cardIndex === -1) return false;
+      
+      // Card is draggable if it's face up and all cards below it are also face up
+      for (let i = cardIndex; i < column.length; i++) {
+        if (!column[i].faceUp) return false;
+      }
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Attach drop zone listeners for drag and drop
+   */
+  attachDropZoneListeners() {
+    // Tableau columns as drop zones
+    for (let i = 0; i < 7; i++) {
+      const column = this.rootElement.querySelector(`#tableau-${i}`);
+      if (column && !column.dataset.hasDropListeners) {
+        this.attachDropListeners(column, `tableau-${i}`);
+        column.dataset.hasDropListeners = 'true';
+      }
+    }
+    
+    // Foundation piles as drop zones
+    for (let i = 0; i < 4; i++) {
+      const foundation = this.rootElement.querySelector(`#foundation-${i}`);
+      if (foundation && !foundation.dataset.hasDropListeners) {
+        this.attachDropListeners(foundation, `foundation-${i}`);
+        foundation.dataset.hasDropListeners = 'true';
+      }
+    }
+  }
+
+  /**
+   * Attach drop event listeners to an element
+   */
+  attachDropListeners(element, dropZoneId) {
+    const dragOverHandler = (e) => {
+      e.preventDefault();
+      element.classList.add('drag-over');
+    };
+    
+    const dragLeaveHandler = (e) => {
+      element.classList.remove('drag-over');
+    };
+    
+    const dropHandler = (e) => {
+      e.preventDefault();
+      element.classList.remove('drag-over');
+      this.handleDrop(e, dropZoneId);
+    };
+    
+    element.addEventListener('dragover', dragOverHandler);
+    element.addEventListener('dragleave', dragLeaveHandler);
+    element.addEventListener('drop', dropHandler);
+    
+    this.eventListeners.push({ element, event: 'dragover', handler: dragOverHandler });
+    this.eventListeners.push({ element, event: 'dragleave', handler: dragLeaveHandler });
+    this.eventListeners.push({ element, event: 'drop', handler: dropHandler });
   }
 
   /**
@@ -256,19 +370,119 @@ class Klondike3Engine {
   }
 
   /**
-   * Handle card click (simplified interaction for now)
+   * Handle card click (for selection/highlighting)
    */
   handleCardClick(cardElement) {
-    const cardId = cardElement.dataset.cardId;
+    // Remove previous selections
+    this.rootElement.querySelectorAll('.klondike-card-selected').forEach(card => {
+      card.classList.remove('klondike-card-selected');
+    });
+    
+    // Select this card if it's draggable
+    if (this.isCardDraggable(cardElement)) {
+      cardElement.classList.add('klondike-card-selected');
+      this.selectedCard = {
+        element: cardElement,
+        cardId: cardElement.dataset.cardId,
+        location: cardElement.dataset.location
+      };
+    }
+  }
+
+  /**
+   * Handle card double-click (auto-move to foundation)
+   */
+  handleCardDoubleClick(cardElement) {
     const location = cardElement.dataset.location;
     
-    // Simple auto-move logic: try to move to foundation if possible
     if (location === 'waste') {
       this.tryMoveWasteToFoundation();
     } else if (location.startsWith('tableau-')) {
       const colIndex = parseInt(location.split('-')[1]);
       this.tryMoveTableauToFoundation(colIndex);
+    } else if (location.startsWith('foundation-')) {
+      const foundationIndex = parseInt(location.split('-')[1]);
+      this.tryMoveFoundationToTableau(foundationIndex);
     }
+  }
+
+  /**
+   * Handle drag start
+   */
+  handleDragStart(e, cardElement) {
+    const cardId = cardElement.dataset.cardId;
+    const location = cardElement.dataset.location;
+    
+    // Store drag data
+    this.dragData = {
+      cardId: cardId,
+      location: location,
+      element: cardElement
+    };
+    
+    // Set drag effect
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', cardId);
+    
+    // Add visual feedback
+    cardElement.classList.add('dragging');
+    
+    // If dragging from tableau, we might be dragging multiple cards
+    if (location.startsWith('tableau-')) {
+      const colIndex = parseInt(location.split('-')[1]);
+      const column = this.gameState.tableau[colIndex];
+      const cardIndex = column.findIndex(card => card.id === cardId);
+      
+      if (cardIndex !== -1) {
+        this.dragData.draggedCards = column.slice(cardIndex);
+      }
+    } else {
+      // Single card from waste or foundation
+      const card = this.findCardById(cardId);
+      this.dragData.draggedCards = card ? [card] : [];
+    }
+  }
+
+  /**
+   * Handle drop
+   */
+  handleDrop(e, dropZoneId) {
+    if (!this.dragData) return;
+    
+    const success = this.attemptMove(this.dragData.location, dropZoneId, this.dragData.draggedCards);
+    
+    // Clean up drag state
+    if (this.dragData.element) {
+      this.dragData.element.classList.remove('dragging');
+    }
+    this.dragData = null;
+    
+    if (success) {
+      this.updateDisplay();
+    }
+  }
+
+  /**
+   * Find a card by its ID
+   */
+  findCardById(cardId) {
+    // Check waste
+    const wasteCard = this.gameState.waste.find(card => card.id === cardId);
+    if (wasteCard) return wasteCard;
+    
+    // Check foundations
+    for (const foundation of this.gameState.foundations) {
+      const foundCard = foundation.find(card => card.id === cardId);
+      if (foundCard) return foundCard;
+    }
+    
+    // Check tableau
+    for (const column of this.gameState.tableau) {
+      const foundCard = column.find(card => card.id === cardId);
+      if (foundCard) return foundCard;
+    }
+    
+    return null;
   }
 
   /**
@@ -329,6 +543,156 @@ class Klondike3Engine {
     }
     
     return false;
+  }
+
+  /**
+   * Try to move top foundation card to tableau
+   */
+  tryMoveFoundationToTableau(foundationIndex) {
+    const foundation = this.gameState.foundations[foundationIndex];
+    if (foundation.length === 0) return false;
+
+    const card = foundation[foundation.length - 1];
+    
+    // Try to find a valid tableau position
+    for (let col = 0; col < 7; col++) {
+      if (this.canMoveToTableau([card], col)) {
+        // Remove from foundation
+        foundation.pop();
+        
+        // Add to tableau
+        this.gameState.tableau[col].push(card);
+        
+        // Scoring: -15 for moving from foundation to tableau
+        this.gameState.score -= 15;
+        
+        this.registerMove();
+        this.updateDisplay();
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if cards can be moved to a tableau column
+   */
+  canMoveToTableau(cards, colIndex) {
+    if (!cards || cards.length === 0) return false;
+    
+    const column = this.gameState.tableau[colIndex];
+    const bottomCard = cards[0]; // The card that will be placed on the column
+    
+    if (column.length === 0) {
+      // Empty column - only Kings can be placed
+      return bottomCard.rank === 13;
+    } else {
+      const topCard = column[column.length - 1];
+      if (!topCard.faceUp) return false;
+      
+      // Must be opposite color and one rank lower
+      const isOppositeColor = (topCard.suit % 2) !== (bottomCard.suit % 2);
+      const isOneRankLower = bottomCard.rank === topCard.rank - 1;
+      
+      return isOppositeColor && isOneRankLower;
+    }
+  }
+
+  /**
+   * Attempt to move cards from one location to another
+   */
+  attemptMove(fromLocation, toLocation, cards) {
+    if (!cards || cards.length === 0) return false;
+    
+    if (toLocation.startsWith('tableau-')) {
+      const colIndex = parseInt(toLocation.split('-')[1]);
+      return this.moveCardsToTableau(fromLocation, colIndex, cards);
+    } else if (toLocation.startsWith('foundation-')) {
+      const foundationIndex = parseInt(toLocation.split('-')[1]);
+      return this.moveCardToFoundation(fromLocation, foundationIndex, cards[0]);
+    }
+    
+    return false;
+  }
+
+  /**
+   * Move cards to tableau column
+   */
+  moveCardsToTableau(fromLocation, toColIndex, cards) {
+    if (!this.canMoveToTableau(cards, toColIndex)) return false;
+    
+    // Remove cards from source
+    if (fromLocation === 'waste') {
+      if (cards.length === 1 && this.gameState.waste.length > 0) {
+        this.gameState.waste.pop();
+        // Scoring: +5 for waste to tableau
+        this.gameState.score += 5;
+      }
+    } else if (fromLocation.startsWith('foundation-')) {
+      const foundationIndex = parseInt(fromLocation.split('-')[1]);
+      if (cards.length === 1 && this.gameState.foundations[foundationIndex].length > 0) {
+        this.gameState.foundations[foundationIndex].pop();
+        // Scoring: -15 for foundation to tableau
+        this.gameState.score -= 15;
+      }
+    } else if (fromLocation.startsWith('tableau-')) {
+      const fromColIndex = parseInt(fromLocation.split('-')[1]);
+      const fromColumn = this.gameState.tableau[fromColIndex];
+      
+      // Remove the dragged cards
+      fromColumn.splice(-cards.length, cards.length);
+      
+      // Reveal top card if it became face down
+      if (fromColumn.length > 0 && !fromColumn[fromColumn.length - 1].faceUp) {
+        fromColumn[fromColumn.length - 1].faceUp = true;
+        // Scoring: +5 for revealing a card
+        this.gameState.score += 5;
+      }
+    }
+    
+    // Add cards to destination
+    this.gameState.tableau[toColIndex].push(...cards);
+    
+    this.registerMove();
+    return true;
+  }
+
+  /**
+   * Move single card to foundation
+   */
+  moveCardToFoundation(fromLocation, foundationIndex, card) {
+    const canMove = this.canMoveToFoundation(card);
+    if (canMove !== foundationIndex) return false;
+    
+    // Remove card from source
+    if (fromLocation === 'waste') {
+      if (this.gameState.waste.length > 0) {
+        this.gameState.waste.pop();
+      }
+    } else if (fromLocation.startsWith('tableau-')) {
+      const colIndex = parseInt(fromLocation.split('-')[1]);
+      const column = this.gameState.tableau[colIndex];
+      if (column.length > 0) {
+        column.pop();
+        
+        // Reveal top card if it became face down
+        if (column.length > 0 && !column[column.length - 1].faceUp) {
+          column[column.length - 1].faceUp = true;
+          // Scoring: +5 for revealing a card
+          this.gameState.score += 5;
+        }
+      }
+    }
+    
+    // Add to foundation
+    this.gameState.foundations[foundationIndex].push(card);
+    
+    // Scoring: +10 for moving to foundation
+    this.gameState.score += 10;
+    
+    this.registerMove();
+    return true;
   }
 
   /**
