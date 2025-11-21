@@ -158,13 +158,6 @@ class Klondike3Engine {
           card.dataset.hasListeners = 'true';
           return;
         }
-        // Double-click handler for auto-move to foundation
-        const dblClickHandler = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.handleCardDoubleClick(card);
-        };
-        
         // Single click handler
         const clickHandler = (e) => {
           e.preventDefault();
@@ -216,12 +209,6 @@ class Klondike3Engine {
         // Always attach single-click
         card.addEventListener('click', clickHandler);
         this.eventListeners.push({ element: card, event: 'click', handler: clickHandler });
-        
-        // Only non-waste cards should respond to double-click
-        if (location !== 'waste') {
-          card.addEventListener('dblclick', dblClickHandler);
-          this.eventListeners.push({ element: card, event: 'dblclick', handler: dblClickHandler });
-        }
         
         card.dataset.hasListeners = 'true';
       }
