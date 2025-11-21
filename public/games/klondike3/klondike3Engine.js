@@ -459,6 +459,7 @@ class Klondike3Engine {
    * Handle single click on the waste pile:
    * 1) Move top waste card to foundation if possible.
    * 2) Otherwise move it to the first valid tableau column from the left.
+   * 3) If no move is possible, give a small "no move" feedback.
    */
   handleWasteClick() {
     if (!this.gameState || this.gameState.waste.length === 0) return;
@@ -489,8 +490,14 @@ class Klondike3Engine {
       }
     }
 
-    // 3) No legal move from waste: do nothing here.
-    // Optional UX feedback (shake, highlight) can be added at the DOM level if desired.
+    // 3) No legal move from waste: give a small "no move" feedback on the waste pile
+    const wastePile = this.rootElement.querySelector('#waste-pile');
+    if (wastePile) {
+      wastePile.classList.add('klondike-no-move');
+      setTimeout(() => {
+        wastePile.classList.remove('klondike-no-move');
+      }, 150);
+    }
   }
 
   /**
