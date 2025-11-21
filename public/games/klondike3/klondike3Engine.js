@@ -165,17 +165,22 @@ class Klondike3Engine {
           this.handleCardDoubleClick(card);
         };
         
-        // Single click handler for selection and auto-move
+        // Single click handler
         const clickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.handleCardClick(card);
-          
-          // Try auto-move to foundation on single click
           const location = card.dataset.location;
+
+          // Waste has its own behaviour: foundation first, then first valid tableau from left
           if (location === 'waste') {
-            this.tryMoveWasteToFoundation();
-          } else if (location.startsWith('tableau-')) {
+            this.handleWasteClick();
+            return;
+          }
+
+          // Generic path: select card and try auto-move to foundation for tableau cards
+          this.handleCardClick(card);
+
+          if (location && location.startsWith('tableau-')) {
             const colIndex = parseInt(location.split('-')[1]);
             this.tryMoveTableauToFoundation(colIndex);
           }
@@ -448,6 +453,44 @@ class Klondike3Engine {
       const foundationIndex = parseInt(location.split('-')[1]);
       this.tryMoveFoundationToTableau(foundationIndex);
     }
+  }
+
+  /**
+   * Handle single click on the waste pile:
+   * 1) Move top waste card to foundation if possible.
+   * 2) Otherwise move it to the first valid tableau column from the left.
+   */
+  handleWasteClick() {
+    if (!this.gameState || this.gameState.waste.length === 0) return;
+
+    const topCard = this.gameState.waste[this.gameState.waste.length - 1];
+
+    // 1) Try to move to foundation
+    const foundationIndex = this.canMoveToFoundation(topCard);
+    if (foundationIndex !== -1) {
+      const movedToFoundation = this.moveCardToFoundation('waste', foundationIndex, topCard);
+      if (movedToFoundation) {
+        // moveCardToFoundation already updates score and registers move
+        this.updateDisplay();
+        this.checkWinCondition();
+      }
+      return;
+    }
+
+    // 2) Try to move to the first valid tableau column from the left
+    for (let col = 0; col < this.gameState.tableau.length; col++) {
+      if (this.canMoveToTableau([topCard], col)) {
+        const movedToTableau = this.moveCardsToTableau('waste', col, [topCard]);
+        if (movedToTableau) {
+          // moveCardsToTableau already updates score and registers move
+          this.updateDisplay();
+        }
+        return;
+      }
+    }
+
+    // 3) No legal move from waste: do nothing here.
+    // Optional UX feedback (shake, highlight) can be added at the DOM level if desired.
   }
 
   /**
