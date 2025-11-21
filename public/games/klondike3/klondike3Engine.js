@@ -151,6 +151,13 @@ class Klondike3Engine {
     
     cards.forEach(card => {
       if (!card.dataset.hasListeners) {
+        // Skip attaching generic listeners to the stock pile card.
+        // Stock interaction is handled by the #stock-pile click listener.
+        const parentPile = card.parentElement;
+        if (parentPile && parentPile.id === 'stock-pile') {
+          card.dataset.hasListeners = 'true';
+          return;
+        }
         // Double-click handler for auto-move to foundation
         const dblClickHandler = (e) => {
           e.preventDefault();
@@ -375,6 +382,8 @@ class Klondike3Engine {
   handleStockClick() {
     console.log('handleStockClick called - Stock:', this.gameState.stock.length, 'Waste:', this.gameState.waste.length);
     
+    let moved = false;
+
     if (this.gameState.stock.length > 0) {
       // Draw up to 3 cards from stock to waste
       const drawCount = Math.min(3, this.gameState.stock.length);
@@ -385,6 +394,7 @@ class Klondike3Engine {
         card.faceUp = true;
         this.gameState.waste.push(card);
       }
+      moved = true;
     } else if (this.gameState.waste.length > 0) {
       // Recycle waste back to stock
       console.log('Recycling waste back to stock');
@@ -393,11 +403,14 @@ class Klondike3Engine {
         card.faceUp = false;
         this.gameState.stock.push(card);
       }
+      moved = true;
     }
 
-    // Register as a move
-    this.registerMove();
-    this.updateDisplay();
+    // Only register as a move if something actually changed
+    if (moved) {
+      this.registerMove();
+      this.updateDisplay();
+    }
   }
 
   /**
@@ -871,7 +884,7 @@ class Klondike3Engine {
       columnElement.innerHTML = '';
       
       if (column.length === 0) {
-        columnElement.innerHTML = '<div class="klondike-card-placeholder klondike-empty-tableau">Empty</div>';
+        columnElement.innerHTML = '<div class="klondike-card-placeholder klondike-empty-tableau"></div>';
       } else {
         column.forEach((card, index) => {
           const cardElement = this.createCardElement(card, `tableau-${col}`);
