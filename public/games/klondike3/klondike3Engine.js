@@ -170,18 +170,74 @@ class Klondike3Engine {
             return;
           }
 
-          // If this is a tableau card and it is face down, do nothing on click
-          if (location && location.startsWith('tableau-') && !card.classList.contains('klondike-card-face-up')) {
+          // Tableau-specific behaviour
+          if (location && location.startsWith('tableau-')) {
+            // If this is a tableau card and it is face down, do nothing on click
+            if (!card.classList.contains('klondike-card-face-up')) {
+              return;
+            }
+
+            const colIndex = parseInt(location.split('-')[1]);
+            const column = this.gameState && this.gameState.tableau
+              ? this.gameState.tableau[colIndex]
+              : null;
+
+            if (!column || column.length === 0) {
+              return;
+            }
+
+            const cardId = card.dataset.cardId;
+            const cardIndex = column.findIndex(c => c.id === cardId);
+
+            // If we cannot resolve the card index safely, fall back to old behaviour:
+            // select card and try bottom-card auto-move.
+            if (cardIndex === -1) {
+              this.handleCardClick(card);
+              this.tryMoveTableauToFoundation(colIndex);
+              return;
+            }
+
+            // If this is the bottom card in the column, use the standard auto behaviour:
+            // 1) Try foundation, 2) then auto tableau move for that single card.
+            if (cardIndex === column.length - 1) {
+              this.handleCardClick(card);
+              this.tryMoveTableauToFoundation(colIndex);
+              return;
+            }
+
+            // Mid-stack card: this card + all below it are the stack head.
+            // If draggable, auto-move the stack to the first valid tableau column from the left.
+            if (this.isCardDraggable(card)) {
+              // Visual selection to show which stack is in focus
+              this.handleCardClick(card);
+
+              const stack = column.slice(cardIndex);
+              const fromLocation = `tableau-${colIndex}`;
+
+              for (let targetCol = 0; targetCol < this.gameState.tableau.length; targetCol++) {
+                if (targetCol === colIndex) continue; // do not move into the same column
+
+                if (this.canMoveToTableau(stack, targetCol)) {
+                  const moved = this.moveCardsToTableau(fromLocation, targetCol, stack);
+                  if (moved) {
+                    // moveCardsToTableau already updates score and registers move
+                    this.updateDisplay();
+                  }
+                  return;
+                }
+              }
+
+              // No valid tableau target for this stack: do nothing further.
+              return;
+            }
+
+            // Not draggable for some reason: just update selection and do nothing else.
+            this.handleCardClick(card);
             return;
           }
 
-          // Generic path: select card and try auto-move to foundation for tableau cards
+          // For non-waste, non-tableau locations (e.g. foundation), keep generic selection only.
           this.handleCardClick(card);
-
-          if (location && location.startsWith('tableau-')) {
-            const colIndex = parseInt(location.split('-')[1]);
-            this.tryMoveTableauToFoundation(colIndex);
-          }
         };
         
         // Drag start handler
