@@ -191,6 +191,14 @@ class Klondike3Engine {
           this.handleDragStart(e, card);
         };
         
+        // Drag end handler - always clean up dragging state
+        const dragEndHandler = () => {
+          card.classList.remove('dragging');
+          if (this.dragData && this.dragData.element === card) {
+            this.dragData = null;
+          }
+        };
+
         // Make card draggable if it's face up and not in foundation (or top foundation card)
         const location = card.dataset.location;
         const isFaceUp = card.classList.contains('klondike-card-face-up');
@@ -199,6 +207,10 @@ class Klondike3Engine {
           card.draggable = true;
           card.addEventListener('dragstart', dragStartHandler);
           this.eventListeners.push({ element: card, event: 'dragstart', handler: dragStartHandler });
+          
+          // Ensure dragging state is always cleaned up, even on invalid drops
+          card.addEventListener('dragend', dragEndHandler);
+          this.eventListeners.push({ element: card, event: 'dragend', handler: dragEndHandler });
         }
         
         // Always attach single-click
