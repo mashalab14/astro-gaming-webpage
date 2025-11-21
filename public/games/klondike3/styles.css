@@ -72,7 +72,7 @@
   border-radius: 5px;
   position: relative;
   background: rgba(0, 0, 0, 0.05);
-  cursor:pointer;
+  cursor: default;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
@@ -82,10 +82,7 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-.klondike-foundation:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.02);
-}
+
 
 .klondike-waste-pile {
   cursor: default;
