@@ -615,41 +615,58 @@ class Klondike3Engine {
     return false;
   }
 
-  /**
-   * Try to move bottom face-up card from tableau to foundation
-   */
-  tryMoveTableauToFoundation(colIndex) {
-    const column = this.gameState.tableau[colIndex];
-    if (column.length === 0) return false;
+/**
+ * Try to auto-move bottom face-up card from tableau:
+ * 1) First try to move it to its foundation.
+ * 2) If no foundation move is available, try to move it to the first valid tableau column from the left.
+ */
+tryMoveTableauToFoundation(colIndex) {
+  const column = this.gameState.tableau[colIndex];
+  if (!column || column.length === 0) return false;
 
-    const card = column[column.length - 1];
-    if (!card.faceUp) return false;
+  const card = column[column.length - 1];
+  if (!card.faceUp) return false;
 
-    const foundationIndex = this.canMoveToFoundation(card);
+  // 1) Try to move to foundation
+  const foundationIndex = this.canMoveToFoundation(card);
+  if (foundationIndex !== -1) {
+    column.pop();
+    this.gameState.foundations[foundationIndex].push(card);
     
-    if (foundationIndex !== -1) {
-      column.pop();
-      this.gameState.foundations[foundationIndex].push(card);
-      
-      // Scoring: +10 for moving to foundation
-      this.gameState.score += 10;
-      
-      // Check if we need to flip the next card
-      if (column.length > 0 && !column[column.length - 1].faceUp) {
-        column[column.length - 1].faceUp = true;
-        // Scoring: +5 for revealing a card
-        this.gameState.score += 5;
-      }
-      
-      this.registerMove();
-      this.updateDisplay();
-      this.checkWinCondition();
-      return true;
+    // Scoring: +10 for moving to foundation
+    this.gameState.score += 10;
+    
+    // Check if we need to flip the next card
+    if (column.length > 0 && !column[column.length - 1].faceUp) {
+      column[column.length - 1].faceUp = true;
+      // Scoring: +5 for revealing a card
+      this.gameState.score += 5;
     }
     
-    return false;
+    this.registerMove();
+    this.updateDisplay();
+    this.checkWinCondition();
+    return true;
   }
 
+  // 2) If no foundation move, try to move to the first valid tableau column from the left
+  const fromLocation = `tableau-${colIndex}`;
+  for (let targetCol = 0; targetCol < this.gameState.tableau.length; targetCol++) {
+    if (targetCol === colIndex) continue; // don't move into the same column
+
+    if (this.canMoveToTableau([card], targetCol)) {
+      const movedToTableau = this.moveCardsToTableau(fromLocation, targetCol, [card]);
+      if (movedToTableau) {
+        // moveCardsToTableau already updates score and registers move
+        this.updateDisplay();
+        return true;
+      }
+    }
+  }
+
+  // No auto-move possible
+  return false;
+}
   /**
    * Try to move top foundation card to tableau
    */
