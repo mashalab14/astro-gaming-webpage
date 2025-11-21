@@ -201,12 +201,17 @@ class Klondike3Engine {
           this.eventListeners.push({ element: card, event: 'dragstart', handler: dragStartHandler });
         }
         
+        // Always attach single-click
         card.addEventListener('click', clickHandler);
-        card.addEventListener('dblclick', dblClickHandler);
-        card.dataset.hasListeners = 'true';
-        
         this.eventListeners.push({ element: card, event: 'click', handler: clickHandler });
-        this.eventListeners.push({ element: card, event: 'dblclick', handler: dblClickHandler });
+        
+        // Only non-waste cards should respond to double-click
+        if (location !== 'waste') {
+          card.addEventListener('dblclick', dblClickHandler);
+          this.eventListeners.push({ element: card, event: 'dblclick', handler: dblClickHandler });
+        }
+        
+        card.dataset.hasListeners = 'true';
       }
     });
     
@@ -460,6 +465,9 @@ class Klondike3Engine {
    * 1) Move top waste card to foundation if possible.
    * 2) Otherwise move it to the first valid tableau column from the left.
    * 3) If no move is possible, give a small "no move" feedback.
+   *
+   * This method does not directly modify score or register moves;
+   * all scoring and move counting is handled in moveCardToFoundation/moveCardsToTableau.
    */
   handleWasteClick() {
     if (!this.gameState || this.gameState.waste.length === 0) return;
