@@ -479,9 +479,8 @@ class Klondike3Engine {
     if (foundationIndex !== -1) {
       const movedToFoundation = this.moveCardToFoundation('waste', foundationIndex, topCard);
       if (movedToFoundation) {
-        // moveCardToFoundation already updates score and registers move
+        // moveCardToFoundation already updates score, registers move, and checks win
         this.updateDisplay();
-        this.checkWinCondition();
       }
       return;
     }
@@ -794,6 +793,7 @@ class Klondike3Engine {
     this.gameState.score += 10;
     
     this.registerMove();
+    this.checkWinCondition();
     return true;
   }
 
