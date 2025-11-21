@@ -705,7 +705,10 @@ class Klondike3Engine {
       if (!topCard.faceUp) return false;
       
       // Must be opposite color and one rank lower
-      const isOppositeColor = (topCard.suit % 2) !== (bottomCard.suit % 2);
+      // Suits: 0=Hearts (red), 1=Diamonds (red), 2=Clubs (black), 3=Spades (black)
+      const topIsRed = topCard.suit === 0 || topCard.suit === 1;
+      const bottomIsRed = bottomCard.suit === 0 || bottomCard.suit === 1;
+      const isOppositeColor = topIsRed !== bottomIsRed;
       const isOneRankLower = bottomCard.rank === topCard.rank - 1;
       
       return isOppositeColor && isOneRankLower;
