@@ -170,6 +170,11 @@ class Klondike3Engine {
             return;
           }
 
+          // If this is a tableau card and it is face down, do nothing on click
+          if (location && location.startsWith('tableau-') && !card.classList.contains('klondike-card-face-up')) {
+            return;
+          }
+
           // Generic path: select card and try auto-move to foundation for tableau cards
           this.handleCardClick(card);
 
