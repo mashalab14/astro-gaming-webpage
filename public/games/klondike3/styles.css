@@ -286,3 +286,29 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* Floating drag stack styles */
+.klondike-floating-drag-stack {
+  opacity: 0.8;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+}
+
+.klondike-drag-stack-card {
+  transform: rotate(2deg);
+  transition: none;
+}
+
+.klondike-card-hidden-for-drag {
+  transition: opacity 0.1s ease;
+}
+
+/* No-move feedback for waste pile */
+.klondike-no-move {
+  animation: shake 0.15s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}

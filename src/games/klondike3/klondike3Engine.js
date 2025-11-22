@@ -151,27 +151,93 @@ class Klondike3Engine {
     
     cards.forEach(card => {
       if (!card.dataset.hasListeners) {
-        // Double-click handler for auto-move to foundation
-        const dblClickHandler = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.handleCardDoubleClick(card);
-        };
-        
-        // Single click handler for selection and auto-move
+        // Skip attaching generic listeners to the stock pile card.
+        // Stock interaction is handled by the #stock-pile click listener.
+        const parentPile = card.parentElement;
+        if (parentPile && parentPile.id === 'stock-pile') {
+          card.dataset.hasListeners = 'true';
+          return;
+        }
+        // Single click handler
         const clickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.handleCardClick(card);
-          
-          // Try auto-move to foundation on single click
           const location = card.dataset.location;
+
+          // Waste has its own behaviour: foundation first, then first valid tableau from left
           if (location === 'waste') {
-            this.tryMoveWasteToFoundation();
-          } else if (location.startsWith('tableau-')) {
-            const colIndex = parseInt(location.split('-')[1]);
-            this.tryMoveTableauToFoundation(colIndex);
+            this.handleWasteClick();
+            return;
           }
+
+          // Tableau-specific behaviour
+          if (location && location.startsWith('tableau-')) {
+            // If this is a tableau card and it is face down, do nothing on click
+            if (!card.classList.contains('klondike-card-face-up')) {
+              return;
+            }
+
+            const colIndex = parseInt(location.split('-')[1]);
+            const column = this.gameState && this.gameState.tableau
+              ? this.gameState.tableau[colIndex]
+              : null;
+
+            if (!column || column.length === 0) {
+              return;
+            }
+
+            const cardId = card.dataset.cardId;
+            const cardIndex = column.findIndex(c => c.id === cardId);
+
+            // If we cannot resolve the card index safely, fall back to old behaviour:
+            // select card and try bottom-card auto-move.
+            if (cardIndex === -1) {
+              this.handleCardClick(card);
+              this.tryMoveTableauToFoundation(colIndex);
+              return;
+            }
+
+            // If this is the bottom card in the column, use the standard auto behaviour:
+            // 1) Try foundation, 2) then auto tableau move for that single card.
+            if (cardIndex === column.length - 1) {
+              this.handleCardClick(card);
+              this.tryMoveTableauToFoundation(colIndex);
+              return;
+            }
+
+            // Mid-stack card: this card + all below it are the stack head.
+            // If draggable, auto-move the stack to the first valid tableau column from the left.
+            if (this.isCardDraggable(card)) {
+              // Visual selection to show which stack is in focus
+              this.handleCardClick(card);
+
+              const stack = column.slice(cardIndex);
+              const fromLocation = `tableau-${colIndex}`;
+
+              for (let targetCol = 0; targetCol < this.gameState.tableau.length; targetCol++) {
+                if (targetCol === colIndex) continue; // do not move into the same column
+
+                if (this.canMoveToTableau(stack, targetCol)) {
+                  const moved = this.moveCardsToTableau(fromLocation, targetCol, stack);
+                  if (moved) {
+                    // moveCardsToTableau already updates score and registers move
+                    this.updateDisplay();
+                  }
+                  return;
+                }
+              }
+
+              // No valid tableau target for this stack: do nothing further.
+              return;
+            }
+
+            // Not draggable for some reason: just update selection and do nothing else.
+            this.handleCardClick(card);
+            return;
+          }
+
+          // For non-waste, non-tableau locations (e.g. foundation), keep generic selection only.
+          this.handleCardClick(card);
         };
         
         // Drag start handler
@@ -179,6 +245,14 @@ class Klondike3Engine {
           this.handleDragStart(e, card);
         };
         
+        // Drag end handler - always clean up dragging state
+        const dragEndHandler = () => {
+          // Clean up drag visuals on unsuccessful drops
+          if (this.dragData && this.dragData.element === card) {
+            this.cleanupDragVisuals(false);
+          }
+        };
+
         // Make card draggable if it's face up and not in foundation (or top foundation card)
         const location = card.dataset.location;
         const isFaceUp = card.classList.contains('klondike-card-face-up');
@@ -187,14 +261,17 @@ class Klondike3Engine {
           card.draggable = true;
           card.addEventListener('dragstart', dragStartHandler);
           this.eventListeners.push({ element: card, event: 'dragstart', handler: dragStartHandler });
+          
+          // Ensure dragging state is always cleaned up, even on invalid drops
+          card.addEventListener('dragend', dragEndHandler);
+          this.eventListeners.push({ element: card, event: 'dragend', handler: dragEndHandler });
         }
         
+        // Always attach single-click
         card.addEventListener('click', clickHandler);
-        card.addEventListener('dblclick', dblClickHandler);
-        card.dataset.hasListeners = 'true';
-        
         this.eventListeners.push({ element: card, event: 'click', handler: clickHandler });
-        this.eventListeners.push({ element: card, event: 'dblclick', handler: dblClickHandler });
+        
+        card.dataset.hasListeners = 'true';
       }
     });
     
@@ -375,6 +452,8 @@ class Klondike3Engine {
   handleStockClick() {
     console.log('handleStockClick called - Stock:', this.gameState.stock.length, 'Waste:', this.gameState.waste.length);
     
+    let moved = false;
+
     if (this.gameState.stock.length > 0) {
       // Draw up to 3 cards from stock to waste
       const drawCount = Math.min(3, this.gameState.stock.length);
@@ -385,6 +464,7 @@ class Klondike3Engine {
         card.faceUp = true;
         this.gameState.waste.push(card);
       }
+      moved = true;
     } else if (this.gameState.waste.length > 0) {
       // Recycle waste back to stock
       console.log('Recycling waste back to stock');
@@ -393,11 +473,14 @@ class Klondike3Engine {
         card.faceUp = false;
         this.gameState.stock.push(card);
       }
+      moved = true;
     }
 
-    // Register as a move
-    this.registerMove();
-    this.updateDisplay();
+    // Only register as a move if something actually changed
+    if (moved) {
+      this.registerMove();
+      this.updateDisplay();
+    }
   }
 
   /**
@@ -438,6 +521,53 @@ class Klondike3Engine {
   }
 
   /**
+   * Handle single click on the waste pile:
+   * 1) Move top waste card to foundation if possible.
+   * 2) Otherwise move it to the first valid tableau column from the left.
+   * 3) If no move is possible, give a small "no move" feedback.
+   *
+   * This method does not directly modify score or register moves;
+   * all scoring and move counting is handled in moveCardToFoundation/moveCardsToTableau.
+   */
+  handleWasteClick() {
+    if (!this.gameState || this.gameState.waste.length === 0) return;
+
+    const topCard = this.gameState.waste[this.gameState.waste.length - 1];
+
+    // 1) Try to move to foundation
+    const foundationIndex = this.canMoveToFoundation(topCard);
+    if (foundationIndex !== -1) {
+      const movedToFoundation = this.moveCardToFoundation('waste', foundationIndex, topCard);
+      if (movedToFoundation) {
+        // moveCardToFoundation already updates score, registers move, and checks win
+        this.updateDisplay();
+      }
+      return;
+    }
+
+    // 2) Try to move to the first valid tableau column from the left
+    for (let col = 0; col < this.gameState.tableau.length; col++) {
+      if (this.canMoveToTableau([topCard], col)) {
+        const movedToTableau = this.moveCardsToTableau('waste', col, [topCard]);
+        if (movedToTableau) {
+          // moveCardsToTableau already updates score and registers move
+          this.updateDisplay();
+        }
+        return;
+      }
+    }
+
+    // 3) No legal move from waste: give a small "no move" feedback on the waste pile
+    const wastePile = this.rootElement.querySelector('#waste-pile');
+    if (wastePile) {
+      wastePile.classList.add('klondike-no-move');
+      setTimeout(() => {
+        wastePile.classList.remove('klondike-no-move');
+      }, 150);
+    }
+  }
+
+  /**
    * Handle drag start
    */
   handleDragStart(e, cardElement) {
@@ -455,10 +585,7 @@ class Klondike3Engine {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', cardId);
     
-    // Add visual feedback
-    cardElement.classList.add('dragging');
-    
-    // If dragging from tableau, we might be dragging multiple cards
+    // If dragging from tableau, create visual stack and hide original cards
     if (location.startsWith('tableau-')) {
       const colIndex = parseInt(location.split('-')[1]);
       const column = this.gameState.tableau[colIndex];
@@ -466,9 +593,18 @@ class Klondike3Engine {
       
       if (cardIndex !== -1) {
         this.dragData.draggedCards = column.slice(cardIndex);
+        this.dragData.colIndex = colIndex;
+        this.dragData.cardIndex = cardIndex;
+        
+        // Create floating drag stack
+        this.createFloatingDragStack(e, this.dragData.draggedCards);
+        
+        // Hide original cards in the tableau column
+        this.hideTableauCards(colIndex, cardIndex);
       }
     } else {
-      // Single card from waste or foundation
+      // Single card from waste or foundation - use existing behavior
+      cardElement.classList.add('dragging');
       const card = this.findCardById(cardId);
       this.dragData.draggedCards = card ? [card] : [];
     }
@@ -483,14 +619,129 @@ class Klondike3Engine {
     const success = this.attemptMove(this.dragData.location, dropZoneId, this.dragData.draggedCards);
     
     // Clean up drag state
-    if (this.dragData.element) {
-      this.dragData.element.classList.remove('dragging');
-    }
-    this.dragData = null;
+    this.cleanupDragVisuals(success);
     
     if (success) {
       this.updateDisplay();
     }
+  }
+
+  /**
+   * Create a floating visual stack that follows the cursor during drag
+   */
+  createFloatingDragStack(e, cards) {
+    // Remove any existing floating stack
+    this.removeFloatingDragStack();
+    
+    // Create container for floating stack
+    const floatingStack = document.createElement('div');
+    floatingStack.className = 'klondike-floating-drag-stack';
+    floatingStack.style.position = 'fixed';
+    floatingStack.style.pointerEvents = 'none';
+    floatingStack.style.zIndex = '10000';
+    floatingStack.style.transform = 'translate(-50%, -50%)';
+    
+    // Add cards to floating stack
+    cards.forEach((card, index) => {
+      const cardElement = this.createCardElement(card, 'floating');
+      cardElement.style.position = 'absolute';
+      cardElement.style.top = `${index * 20}px`;
+      cardElement.style.left = '0';
+      cardElement.classList.add('klondike-drag-stack-card');
+      floatingStack.appendChild(cardElement);
+    });
+    
+    // Position at cursor
+    floatingStack.style.left = `${e.clientX}px`;
+    floatingStack.style.top = `${e.clientY}px`;
+    
+    // Add to document
+    document.body.appendChild(floatingStack);
+    this.dragData.floatingStack = floatingStack;
+    
+    // Track mouse movement to update position
+    this.dragData.mouseMoveHandler = (moveE) => {
+      if (this.dragData.floatingStack) {
+        this.dragData.floatingStack.style.left = `${moveE.clientX}px`;
+        this.dragData.floatingStack.style.top = `${moveE.clientY}px`;
+      }
+    };
+    
+    // Listen to both dragover and mousemove for better tracking
+    document.addEventListener('dragover', this.dragData.mouseMoveHandler);
+    document.addEventListener('mousemove', this.dragData.mouseMoveHandler);
+  }
+
+  /**
+   * Remove the floating drag stack
+   */
+  removeFloatingDragStack() {
+    if (this.dragData && this.dragData.floatingStack) {
+      this.dragData.floatingStack.remove();
+      this.dragData.floatingStack = null;
+    }
+    
+    if (this.dragData && this.dragData.mouseMoveHandler) {
+      document.removeEventListener('dragover', this.dragData.mouseMoveHandler);
+      document.removeEventListener('mousemove', this.dragData.mouseMoveHandler);
+      this.dragData.mouseMoveHandler = null;
+    }
+  }
+
+  /**
+   * Hide tableau cards at specified positions during drag
+   */
+  hideTableauCards(colIndex, startIndex) {
+    const columnElement = this.rootElement.querySelector(`#tableau-${colIndex}`);
+    if (!columnElement) return;
+    
+    const cardElements = columnElement.querySelectorAll('.klondike-card');
+    for (let i = startIndex; i < cardElements.length; i++) {
+      if (cardElements[i]) {
+        cardElements[i].style.opacity = '0';
+        cardElements[i].classList.add('klondike-card-hidden-for-drag');
+      }
+    }
+  }
+
+  /**
+   * Restore visibility of hidden tableau cards
+   */
+  restoreTableauCards(colIndex, startIndex) {
+    const columnElement = this.rootElement.querySelector(`#tableau-${colIndex}`);
+    if (!columnElement) return;
+    
+    const cardElements = columnElement.querySelectorAll('.klondike-card-hidden-for-drag');
+    cardElements.forEach(cardElement => {
+      cardElement.style.opacity = '';
+      cardElement.classList.remove('klondike-card-hidden-for-drag');
+    });
+  }
+
+  /**
+   * Clean up all drag-related visuals
+   */
+  cleanupDragVisuals(success) {
+    if (!this.dragData) return;
+    
+    // Clean up floating stack
+    this.removeFloatingDragStack();
+    
+    // Handle tableau drag cleanup
+    if (this.dragData.location && this.dragData.location.startsWith('tableau-')) {
+      if (!success) {
+        // Failed drop - restore original cards visibility
+        this.restoreTableauCards(this.dragData.colIndex, this.dragData.cardIndex);
+      }
+      // On successful drop, updateDisplay() will recreate the DOM properly
+    } else {
+      // Non-tableau drag - clean up dragging class
+      if (this.dragData.element) {
+        this.dragData.element.classList.remove('dragging');
+      }
+    }
+    
+    this.dragData = null;
   }
 
   /**
@@ -541,41 +792,58 @@ class Klondike3Engine {
     return false;
   }
 
-  /**
-   * Try to move bottom face-up card from tableau to foundation
-   */
-  tryMoveTableauToFoundation(colIndex) {
-    const column = this.gameState.tableau[colIndex];
-    if (column.length === 0) return false;
+/**
+ * Try to auto-move bottom face-up card from tableau:
+ * 1) First try to move it to its foundation.
+ * 2) If no foundation move is available, try to move it to the first valid tableau column from the left.
+ */
+tryMoveTableauToFoundation(colIndex) {
+  const column = this.gameState.tableau[colIndex];
+  if (!column || column.length === 0) return false;
 
-    const card = column[column.length - 1];
-    if (!card.faceUp) return false;
+  const card = column[column.length - 1];
+  if (!card.faceUp) return false;
 
-    const foundationIndex = this.canMoveToFoundation(card);
+  // 1) Try to move to foundation
+  const foundationIndex = this.canMoveToFoundation(card);
+  if (foundationIndex !== -1) {
+    column.pop();
+    this.gameState.foundations[foundationIndex].push(card);
     
-    if (foundationIndex !== -1) {
-      column.pop();
-      this.gameState.foundations[foundationIndex].push(card);
-      
-      // Scoring: +10 for moving to foundation
-      this.gameState.score += 10;
-      
-      // Check if we need to flip the next card
-      if (column.length > 0 && !column[column.length - 1].faceUp) {
-        column[column.length - 1].faceUp = true;
-        // Scoring: +5 for revealing a card
-        this.gameState.score += 5;
-      }
-      
-      this.registerMove();
-      this.updateDisplay();
-      this.checkWinCondition();
-      return true;
+    // Scoring: +10 for moving to foundation
+    this.gameState.score += 10;
+    
+    // Check if we need to flip the next card
+    if (column.length > 0 && !column[column.length - 1].faceUp) {
+      column[column.length - 1].faceUp = true;
+      // Scoring: +5 for revealing a card
+      this.gameState.score += 5;
     }
     
-    return false;
+    this.registerMove();
+    this.updateDisplay();
+    this.checkWinCondition();
+    return true;
   }
 
+  // 2) If no foundation move, try to move to the first valid tableau column from the left
+  const fromLocation = `tableau-${colIndex}`;
+  for (let targetCol = 0; targetCol < this.gameState.tableau.length; targetCol++) {
+    if (targetCol === colIndex) continue; // don't move into the same column
+
+    if (this.canMoveToTableau([card], targetCol)) {
+      const movedToTableau = this.moveCardsToTableau(fromLocation, targetCol, [card]);
+      if (movedToTableau) {
+        // moveCardsToTableau already updates score and registers move
+        this.updateDisplay();
+        return true;
+      }
+    }
+  }
+
+  // No auto-move possible
+  return false;
+}
   /**
    * Try to move top foundation card to tableau
    */
@@ -623,7 +891,10 @@ class Klondike3Engine {
       if (!topCard.faceUp) return false;
       
       // Must be opposite color and one rank lower
-      const isOppositeColor = (topCard.suit % 2) !== (bottomCard.suit % 2);
+      // Suits: 0=Hearts (red), 1=Diamonds (red), 2=Clubs (black), 3=Spades (black)
+      const topIsRed = topCard.suit === 0 || topCard.suit === 1;
+      const bottomIsRed = bottomCard.suit === 0 || bottomCard.suit === 1;
+      const isOppositeColor = topIsRed !== bottomIsRed;
       const isOneRankLower = bottomCard.rank === topCard.rank - 1;
       
       return isOppositeColor && isOneRankLower;
@@ -723,6 +994,7 @@ class Klondike3Engine {
     this.gameState.score += 10;
     
     this.registerMove();
+    this.checkWinCondition();
     return true;
   }
 
@@ -871,7 +1143,7 @@ class Klondike3Engine {
       columnElement.innerHTML = '';
       
       if (column.length === 0) {
-        columnElement.innerHTML = '<div class="klondike-card-placeholder klondike-empty-tableau">Empty</div>';
+        columnElement.innerHTML = '<div class="klondike-card-placeholder klondike-empty-tableau"></div>';
       } else {
         column.forEach((card, index) => {
           const cardElement = this.createCardElement(card, `tableau-${col}`);

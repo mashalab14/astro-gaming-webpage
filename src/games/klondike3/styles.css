@@ -8,15 +8,7 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   
   --tableau-columns: 7;
- /* --column-gap: 2rem; */
-  --column-gap: 1.5rem;  /* slightly smaller gap so 7 columns fit nicely */
-
-  /* Card size: roughly 7 cards across, capped for large screens */
-/*
-  --card-width: min(90px, calc((70vw - 64px) / 7)); 
-  --card-height: calc(var(--card-width) * 1.4);
-*/
-  /* Card width = (container width - total gaps) / 7 */
+  --column-gap: 1.5rem;
   --card-width: calc(
     (70vw - (var(--tableau-columns) - 1) * var(--column-gap))
     / var(--tableau-columns)
@@ -37,23 +29,26 @@
 
 /* Top row: Stock/Waste and Foundations */
 .klondike-top-row {
-  display: flex;
-  justify-content: flex-start;
+  display: grid;  /* was: flex */
+  grid-template-columns: repeat(var(--tableau-columns), var(--card-width));
+  column-gap: var(--column-gap);
   align-items: flex-start;
-  height: 100px;
-  margin-bottom: 1.5rem; /* Clear vertical gap before tableau */
+  height: var(--card-height);
+  margin-bottom: 1.5rem;
 }
 
 .klondike-stock-waste {
   display: flex;
   gap: var(--column-gap);
-  margin-right: calc(5 * (var(--card-width) + var(--column-gap))); /* Align with first two tableau columns */
+  grid-column: 1 / span 2;   /* new */
+  margin-right: 0;           /* remove the old margin-right calc */
 }
 
 .klondike-foundations {
   display: flex;
   gap: var(--column-gap);
-  /* Foundations align with last 4 tableau columns */
+  grid-column: 4 / span 4;   /* new */
+  justify-content: flex-start;
 }
 
 /* Card piles styling */
@@ -61,8 +56,8 @@
 .klondike-waste-pile {
   width: var(--card-width);
   height: var(--card-height);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
   position: relative;
   background: rgba(0, 0, 0, 0.1);
   cursor: pointer;
@@ -74,10 +69,10 @@
   width: var(--card-width);
   height: var(--card-height);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 5px;
   position: relative;
   background: rgba(0, 0, 0, 0.05);
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
@@ -87,10 +82,7 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-.klondike-foundation:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.02);
-}
+
 
 .klondike-waste-pile {
   cursor: default;
@@ -119,8 +111,8 @@
 .klondike-card {
   width: var(--card-width);
   height: var(--card-height);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0);
+  border-radius: 5px;
   background: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -141,7 +133,7 @@
 }
 
 .klondike-card-back {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: #817a7b;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -202,7 +194,7 @@
   font-size: 12px;
   font-weight: 500;
   border: 2px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -276,14 +268,13 @@
 }
 
 .klondike-card-selected {
-  outline: 2px solid #FFD700;
-  outline-offset: 2px;
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  outline: none;
+  box-shadow: none;
 }
 
 .drag-over {
-  background: rgba(255, 215, 0, 0.2) !important;
-  border: 2px dashed #FFD700 !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 /* Make cards draggable */
@@ -294,4 +285,30 @@
 .klondike-card[draggable="true"]:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Floating drag stack styles */
+.klondike-floating-drag-stack {
+  opacity: 0.8;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+}
+
+.klondike-drag-stack-card {
+  transform: rotate(2deg);
+  transition: none;
+}
+
+.klondike-card-hidden-for-drag {
+  transition: opacity 0.1s ease;
+}
+
+/* No-move feedback for waste pile */
+.klondike-no-move {
+  animation: shake 0.15s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
 }

@@ -247,9 +247,9 @@ class Klondike3Engine {
         
         // Drag end handler - always clean up dragging state
         const dragEndHandler = () => {
-          card.classList.remove('dragging');
+          // Clean up drag visuals on unsuccessful drops
           if (this.dragData && this.dragData.element === card) {
-            this.dragData = null;
+            this.cleanupDragVisuals(false);
           }
         };
 
@@ -585,10 +585,7 @@ class Klondike3Engine {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', cardId);
     
-    // Add visual feedback
-    cardElement.classList.add('dragging');
-    
-    // If dragging from tableau, we might be dragging multiple cards
+    // If dragging from tableau, create visual stack and hide original cards
     if (location.startsWith('tableau-')) {
       const colIndex = parseInt(location.split('-')[1]);
       const column = this.gameState.tableau[colIndex];
@@ -596,9 +593,18 @@ class Klondike3Engine {
       
       if (cardIndex !== -1) {
         this.dragData.draggedCards = column.slice(cardIndex);
+        this.dragData.colIndex = colIndex;
+        this.dragData.cardIndex = cardIndex;
+        
+        // Create floating drag stack
+        this.createFloatingDragStack(e, this.dragData.draggedCards);
+        
+        // Hide original cards in the tableau column
+        this.hideTableauCards(colIndex, cardIndex);
       }
     } else {
-      // Single card from waste or foundation
+      // Single card from waste or foundation - use existing behavior
+      cardElement.classList.add('dragging');
       const card = this.findCardById(cardId);
       this.dragData.draggedCards = card ? [card] : [];
     }
@@ -613,14 +619,129 @@ class Klondike3Engine {
     const success = this.attemptMove(this.dragData.location, dropZoneId, this.dragData.draggedCards);
     
     // Clean up drag state
-    if (this.dragData.element) {
-      this.dragData.element.classList.remove('dragging');
-    }
-    this.dragData = null;
+    this.cleanupDragVisuals(success);
     
     if (success) {
       this.updateDisplay();
     }
+  }
+
+  /**
+   * Create a floating visual stack that follows the cursor during drag
+   */
+  createFloatingDragStack(e, cards) {
+    // Remove any existing floating stack
+    this.removeFloatingDragStack();
+    
+    // Create container for floating stack
+    const floatingStack = document.createElement('div');
+    floatingStack.className = 'klondike-floating-drag-stack';
+    floatingStack.style.position = 'fixed';
+    floatingStack.style.pointerEvents = 'none';
+    floatingStack.style.zIndex = '10000';
+    floatingStack.style.transform = 'translate(-50%, -50%)';
+    
+    // Add cards to floating stack
+    cards.forEach((card, index) => {
+      const cardElement = this.createCardElement(card, 'floating');
+      cardElement.style.position = 'absolute';
+      cardElement.style.top = `${index * 20}px`;
+      cardElement.style.left = '0';
+      cardElement.classList.add('klondike-drag-stack-card');
+      floatingStack.appendChild(cardElement);
+    });
+    
+    // Position at cursor
+    floatingStack.style.left = `${e.clientX}px`;
+    floatingStack.style.top = `${e.clientY}px`;
+    
+    // Add to document
+    document.body.appendChild(floatingStack);
+    this.dragData.floatingStack = floatingStack;
+    
+    // Track mouse movement to update position
+    this.dragData.mouseMoveHandler = (moveE) => {
+      if (this.dragData.floatingStack) {
+        this.dragData.floatingStack.style.left = `${moveE.clientX}px`;
+        this.dragData.floatingStack.style.top = `${moveE.clientY}px`;
+      }
+    };
+    
+    // Listen to both dragover and mousemove for better tracking
+    document.addEventListener('dragover', this.dragData.mouseMoveHandler);
+    document.addEventListener('mousemove', this.dragData.mouseMoveHandler);
+  }
+
+  /**
+   * Remove the floating drag stack
+   */
+  removeFloatingDragStack() {
+    if (this.dragData && this.dragData.floatingStack) {
+      this.dragData.floatingStack.remove();
+      this.dragData.floatingStack = null;
+    }
+    
+    if (this.dragData && this.dragData.mouseMoveHandler) {
+      document.removeEventListener('dragover', this.dragData.mouseMoveHandler);
+      document.removeEventListener('mousemove', this.dragData.mouseMoveHandler);
+      this.dragData.mouseMoveHandler = null;
+    }
+  }
+
+  /**
+   * Hide tableau cards at specified positions during drag
+   */
+  hideTableauCards(colIndex, startIndex) {
+    const columnElement = this.rootElement.querySelector(`#tableau-${colIndex}`);
+    if (!columnElement) return;
+    
+    const cardElements = columnElement.querySelectorAll('.klondike-card');
+    for (let i = startIndex; i < cardElements.length; i++) {
+      if (cardElements[i]) {
+        cardElements[i].style.opacity = '0';
+        cardElements[i].classList.add('klondike-card-hidden-for-drag');
+      }
+    }
+  }
+
+  /**
+   * Restore visibility of hidden tableau cards
+   */
+  restoreTableauCards(colIndex, startIndex) {
+    const columnElement = this.rootElement.querySelector(`#tableau-${colIndex}`);
+    if (!columnElement) return;
+    
+    const cardElements = columnElement.querySelectorAll('.klondike-card-hidden-for-drag');
+    cardElements.forEach(cardElement => {
+      cardElement.style.opacity = '';
+      cardElement.classList.remove('klondike-card-hidden-for-drag');
+    });
+  }
+
+  /**
+   * Clean up all drag-related visuals
+   */
+  cleanupDragVisuals(success) {
+    if (!this.dragData) return;
+    
+    // Clean up floating stack
+    this.removeFloatingDragStack();
+    
+    // Handle tableau drag cleanup
+    if (this.dragData.location && this.dragData.location.startsWith('tableau-')) {
+      if (!success) {
+        // Failed drop - restore original cards visibility
+        this.restoreTableauCards(this.dragData.colIndex, this.dragData.cardIndex);
+      }
+      // On successful drop, updateDisplay() will recreate the DOM properly
+    } else {
+      // Non-tableau drag - clean up dragging class
+      if (this.dragData.element) {
+        this.dragData.element.classList.remove('dragging');
+      }
+    }
+    
+    this.dragData = null;
   }
 
   /**
