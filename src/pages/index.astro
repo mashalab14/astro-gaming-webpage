@@ -525,7 +525,75 @@ import Footer from '../components/Footer.astro';
 
   <script>
     // Minimal demo logic + table background preference.
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Anonymous user id bootstrap (shell-level)
+      const USER_ID_KEY = 'solitaire_user_id';
+      let currentUserId = null;
+
+      async function ensureUserId() {
+        try {
+          const stored = localStorage.getItem(USER_ID_KEY);
+
+          // Case 1: there is already an ID in localStorage - validate it with the server
+          if (stored) {
+            try {
+              const res = await fetch('/api/user-validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: stored })
+              });
+
+              const data = await res.json().catch(() => ({}));
+
+              if (res.ok && data && data.ok === true) {
+                // Valid user on server
+                currentUserId = stored;
+                return currentUserId;
+              }
+
+              // Invalid or missing on server - clear local copy and inform user
+              console.error('Stored user id failed validation:', data);
+              localStorage.removeItem(USER_ID_KEY);
+              alert('Error: your user profile could not be validated. Please refresh or clear local data.');
+              return null;
+            } catch (e) {
+              console.error('Error validating stored user id', e);
+              // On validation error, do not create a new user silently
+              return null;
+            }
+          }
+
+          // Case 2: no stored ID - create a new one via /api/user
+          const res = await fetch('/api/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          if (!res.ok) {
+            console.error('Failed to fetch userId from /api/user, status:', res.status);
+            return null;
+          }
+
+          const data = await res.json();
+          if (data && data.userId) {
+            currentUserId = data.userId;
+            localStorage.setItem(USER_ID_KEY, currentUserId);
+            return currentUserId;
+          }
+        } catch (err) {
+          console.error('Error ensuring user id', err);
+        }
+        return null;
+      }
+
+      // Ensure we have a user id before proceeding with the rest of the shell logic
+      const userId = await ensureUserId();
+      if (!userId) {
+        console.error('User id could not be established, aborting shell init');
+        return;
+      }
+
       const root = document.documentElement;
       
       const edgeMenuBtn = document.getElementById('edgeMenuBtn');

@@ -1,0 +1,15 @@
+
+
+name = "free-onlinegamesapp"
+main = "./dist/_worker.js"
+compatibility_date = "2025-02-20"
+
+# D1 binding for user tracking database
+[[d1_databases]]
+# This binding name must match what you configured in Cloudflare Pages bindings
+binding = "DB_USERS"
+# This must match the D1 database name you created in the dashboard
+database_name = "solitaire_users"
+# Replace this placeholder with the actual Database ID from the D1 dashboard
+# (for solitaire_users, copy the UUID that Cloudflare shows as Database ID)
+database_id = "ba68339c-a2b2-47f7-b441-50ba9005d5dc"
