@@ -63,6 +63,20 @@ import Footer from '../components/Footer.astro';
     .container.full { max-width: none; padding: 0; }
     .visually-hidden { position: absolute; width:1px; height:1px; margin:-1px; border:0; padding:0; overflow:hidden; clip: rect(0 0 0 0); white-space:nowrap; }
 
+    .server-status {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #f9fafb;
+      font-size: 12px;
+      z-index: 1200;
+      display: none;
+    }
+
 
 
     /* ===== Page layout ===== */
@@ -352,6 +366,9 @@ import Footer from '../components/Footer.astro';
 
 </head>
 <body data-game="sample-game">
+  <div id="serverStatus" class="server-status" aria-live="polite">
+    Checking the server...
+  </div>
   <a class="visually-hidden" href="#game">Skip to game</a>
 
   <!-- Game Surface takes full viewport -->
@@ -530,61 +547,109 @@ import Footer from '../components/Footer.astro';
       const USER_ID_KEY = 'solitaire_user_id';
       let currentUserId = null;
 
-      async function ensureUserId() {
-        try {
-          const stored = localStorage.getItem(USER_ID_KEY);
+      // Helper to show/hide a small "Checking the server..." banner
+      function setServerStatus(active, text) {
+        const el = document.getElementById('serverStatus');
+        if (!el) return;
+        el.textContent = text || 'Checking the server...';
+        el.style.display = active ? 'block' : 'none';
+      }
 
-          // Case 1: there is already an ID in localStorage - validate it with the server
-          if (stored) {
+      // Helper to create a new user on the server with simple retry logic
+      async function createNewUserWithRetry(maxAttempts = 3) {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            setServerStatus(true, 'Checking the server...');
+            const res = await fetch('/api/user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+
+            if (res.ok) {
+              const data = await res.json().catch(() => null);
+              if (data && data.userId) {
+                currentUserId = data.userId;
+                localStorage.setItem(USER_ID_KEY, currentUserId);
+                setServerStatus(false);
+                return currentUserId;
+              }
+            }
+
+            console.error(`Attempt ${attempt} to create user failed`, res.status);
+          } catch (err) {
+            console.error(`Error on attempt ${attempt} to create user`, err);
+          }
+
+          // Backoff before next retry
+          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+        }
+
+        setServerStatus(false);
+        alert('Cannot reach the server. Please try again later.');
+        return null;
+      }
+
+      async function ensureUserId() {
+        const stored = localStorage.getItem(USER_ID_KEY);
+
+        // Case 1: there is already an ID in localStorage - validate it with the server
+        if (stored) {
+          const maxAttempts = 3;
+
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
+              setServerStatus(true, 'Checking the server...');
               const res = await fetch('/api/user-validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: stored })
               });
 
+              // Treat non-2xx as transient error and retry
+              if (!res.ok) {
+                throw new Error(`Validation request failed with status ${res.status}`);
+              }
+
               const data = await res.json().catch(() => ({}));
 
-              if (res.ok && data && data.ok === true) {
-                // Valid user on server
+              // Server confirms the ID is valid
+              if (data && data.ok === true) {
+                setServerStatus(false);
                 currentUserId = stored;
                 return currentUserId;
               }
 
-              // Invalid or missing on server - clear local copy and inform user
-              console.error('Stored user id failed validation:', data);
-              localStorage.removeItem(USER_ID_KEY);
-              alert('Error: your user profile could not be validated. Please refresh or clear local data.');
-              return null;
+              // Server explicitly says the ID is not present/valid anymore
+              if (data && data.ok === false) {
+                console.warn('Stored user id not found on server, creating new id');
+                localStorage.removeItem(USER_ID_KEY);
+                setServerStatus(false);
+                // Create a fresh user and overwrite localStorage (step 4)
+                return await createNewUserWithRetry();
+              }
+
+              // Unexpected shape - log and fall through to retry
+              console.error('Unexpected response when validating user id', data);
             } catch (e) {
-              console.error('Error validating stored user id', e);
-              // On validation error, do not create a new user silently
-              return null;
+              console.error(`Error validating stored user id (attempt ${attempt})`, e);
+              if (attempt === maxAttempts) {
+                // After final attempt, stop trying and block startup
+                setServerStatus(false);
+                alert('Cannot reach the server. Please try again later.');
+                return null;
+              }
+              // Backoff before next retry
+              await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
             }
           }
 
-          // Case 2: no stored ID - create a new one via /api/user
-          const res = await fetch('/api/user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-          });
-
-          if (!res.ok) {
-            console.error('Failed to fetch userId from /api/user, status:', res.status);
-            return null;
-          }
-
-          const data = await res.json();
-          if (data && data.userId) {
-            currentUserId = data.userId;
-            localStorage.setItem(USER_ID_KEY, currentUserId);
-            return currentUserId;
-          }
-        } catch (err) {
-          console.error('Error ensuring user id', err);
+          // Should not reach here, but in case, fail closed
+          return null;
         }
-        return null;
+
+        // Case 2: no stored ID - create a new one via /api/user with retries
+        return await createNewUserWithRetry();
       }
 
       // Ensure we have a user id before proceeding with the rest of the shell logic
