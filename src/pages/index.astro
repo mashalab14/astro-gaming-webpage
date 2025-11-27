@@ -1447,9 +1447,32 @@ import Footer from '../components/Footer.astro';
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
         const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-        if (e.key === 'Escape') { e.preventDefault(); menuDlg.open ? closeMenu() : showMenu(); }
-        else if (e.key.toLowerCase() === 'p') { e.preventDefault(); gameTimer.isRunning ? pauseGame() : resumeGame(); }
+
+        // Do not hijack shortcuts while the user is typing in form fields or editable regions
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) {
+          return;
+        }
+
+        // Ctrl+Z / Cmd+Z -> Undo last move in the current game
+        // - We prevent the browser's default undo (typing/history) and delegate to the engine.
+        if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (gameEngine && typeof gameEngine.undoLastMove === 'function') {
+            gameEngine.undoLastMove();
+          }
+          return; // Do not process other shortcuts for this keypress
+        }
+
+        // Esc -> Open/close in-game menu
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          menuDlg.open ? closeMenu() : showMenu();
+        }
+        // P -> Pause/Resume game
+        else if (e.key && e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          gameTimer.isRunning ? pauseGame() : resumeGame();
+        }
       });
 
       // ===== Game Switcher logic =====
