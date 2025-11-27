@@ -1104,6 +1104,53 @@ tryMoveTableauToFoundation(colIndex) {
   }
 
   /**
+   * Undo the last logical move, if any, using the shared UndoManager.
+   *
+   * This is intended to be called by the shell when the user clicks the
+   * global Undo button in the footer. It restores the previous snapshot of
+   * `gameState`, re-renders the board, and notifies the shell via `onMove`
+   * so HUD elements (moves, score, stock count) stay in sync.
+   *
+   * Returns true if a move was undone, false if there was nothing to undo or
+   * UndoManager is not available.
+   */
+  undoLastMove() {
+    const undoManager = this.getUndoManager();
+    if (!undoManager ||
+        typeof undoManager.canUndo !== 'function' ||
+        typeof undoManager.undo !== 'function') {
+      return false;
+    }
+
+    if (!undoManager.canUndo()) {
+      return false;
+    }
+
+    const previousState = undoManager.undo();
+    if (!previousState) {
+      return false;
+    }
+
+    // Replace the current game state with the restored snapshot.
+    this.gameState = previousState;
+
+    // Re-render all piles so the UI matches the restored data.
+    this.updateDisplay();
+
+    // Keep the shell HUD in sync. We reuse the existing onMove callback,
+    // using the restored state's counters.
+    if (this.callbacks && typeof this.callbacks.onMove === 'function') {
+      this.callbacks.onMove({
+        moves: this.gameState.moveCount,
+        score: this.gameState.score,
+        stockCount: this.gameState.stock.length
+      });
+    }
+
+    return true;
+  }
+
+  /**
    * Check if the game is won (all cards in foundations)
    */
   checkWinCondition() {
