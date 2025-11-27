@@ -361,6 +361,9 @@ import Footer from '../components/Footer.astro';
   <!-- Klondike Game Styles -->
   <link rel="stylesheet" href="/games/klondike3/styles.css">
   
+  <!-- Klondike Undo Manager (must load before engine so window.UndoManager exists) -->
+  <script is:inline src="/undoManager.js"></script>
+  
   <!-- Klondike Game Engine -->
   <script is:inline src="/games/klondike3/klondike3Engine.js"></script>
 
