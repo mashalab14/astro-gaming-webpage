@@ -978,6 +978,11 @@ tryMoveTableauToFoundation(colIndex) {
   moveCardsToTableau(fromLocation, toColIndex, cards) {
     if (!this.canMoveToTableau(cards, toColIndex)) return false;
     
+    // At this point we know the move is legal and will change the game
+    // state. Capture a single snapshot so one Undo step will revert this
+    // entire move (even if it moves a whole stack).
+    this.captureUndoSnapshot();
+    
     // Remove cards from source
     if (fromLocation === 'waste') {
       if (cards.length === 1 && this.gameState.waste.length > 0) {
@@ -1020,6 +1025,11 @@ tryMoveTableauToFoundation(colIndex) {
   moveCardToFoundation(fromLocation, foundationIndex, card) {
     const canMove = this.canMoveToFoundation(card);
     if (canMove !== foundationIndex) return false;
+    
+    // This is a legal move of a single card into a foundation. Capture the
+    // current state so one Undo step will roll back this entire move,
+    // including score changes and any card flips.
+    this.captureUndoSnapshot();
     
     // Remove card from source
     if (fromLocation === 'waste') {
