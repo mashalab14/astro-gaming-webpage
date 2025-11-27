@@ -905,6 +905,11 @@ tryMoveTableauToFoundation(colIndex) {
     // Try to find a valid tableau position
     for (let col = 0; col < 7; col++) {
       if (this.canMoveToTableau([card], col)) {
+        // This is a legal move from foundation back to tableau. From the
+        // player's perspective this is one logical move, so we capture a
+        // snapshot once before we mutate any piles.
+        this.captureUndoSnapshot();
+
         // Remove from foundation
         foundation.pop();
         
