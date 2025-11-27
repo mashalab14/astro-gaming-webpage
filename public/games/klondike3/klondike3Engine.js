@@ -16,6 +16,45 @@ class Klondike3Engine {
   }
 
   /**
+   * Internal helper: get a reference to the shared global UndoManager, if available.
+   *
+   * We keep this in one place so that if the integration changes (for example,
+   * different global name or no Undo support on some pages), we only have to
+   * adjust this method.
+   */
+  getUndoManager() {
+    // Defensive: in a browser environment, UndoManager is attached to window
+    // by src/scripts/undoManager.js. If it is not available, we return null
+    // and the calling code should simply skip Undo integration.
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const maybeManager = window.UndoManager;
+    if (!maybeManager) {
+      return null;
+    }
+    return maybeManager;
+  }
+
+  /**
+   * Internal helper: capture a snapshot of the current game state for Undo.
+   *
+   * Important:
+   * - We always push the full `this.gameState` object.
+   * - Call this exactly once for each logical move, and always BEFORE you
+   *   mutate `this.gameState` for that move.
+   */
+  captureUndoSnapshot() {
+    const undoManager = this.getUndoManager();
+    if (!undoManager || typeof undoManager.pushSnapshot !== 'function') {
+      return;
+    }
+    // We rely on UndoManager to deep-clone this object so future mutations
+    // do not affect history.
+    undoManager.pushSnapshot(this.gameState);
+  }
+
+  /**
    * Initialize the game inside the provided root element
    * @param {HTMLElement} rootElement - Container element from GameCanvas
    * @param {Object} callbacks - Shell callbacks { onFirstMove, onMove, onWin, onReset }
@@ -366,6 +405,13 @@ class Klondike3Engine {
    * Start a new deal - reset and shuffle cards
    */
   startNewDeal() {
+    // Reset Undo history for this new deal so old moves from the previous
+    // game do not leak into the new one.
+    const undoManager = this.getUndoManager();
+    if (undoManager && typeof undoManager.reset === 'function') {
+      undoManager.reset();
+    }
+
     // Reset game state
     this.gameState = {
       stock: [],

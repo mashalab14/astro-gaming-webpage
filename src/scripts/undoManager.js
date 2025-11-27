@@ -1,5 +1,3 @@
-
-
 /**************************************************************************
  * undoManager.js
  * ----------------
@@ -192,6 +190,9 @@ const UndoManager = (function () {
   };
 })();
 
-// If you use ES modules and a bundler, you can also export it.
-// Comment this out if you prefer to access UndoManager via the global object.
-export default UndoManager;
+// Attach UndoManager to the global object (window in browsers) so that
+// non-module scripts can access it as `window.UndoManager` or simply
+// `UndoManager` in the global scope.
+if (typeof window !== "undefined") {
+  window.UndoManager = UndoManager;
+}
