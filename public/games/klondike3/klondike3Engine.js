@@ -501,6 +501,10 @@ class Klondike3Engine {
     let moved = false;
 
     if (this.gameState.stock.length > 0) {
+      // This click will change the layout of stock/waste, so capture the
+      // current state once before we mutate it.
+      this.captureUndoSnapshot();
+
       // Draw up to 3 cards from stock to waste
       const drawCount = Math.min(3, this.gameState.stock.length);
       console.log('Drawing', drawCount, 'cards from stock');
@@ -512,6 +516,10 @@ class Klondike3Engine {
       }
       moved = true;
     } else if (this.gameState.waste.length > 0) {
+      // Recycling waste back to stock also counts as one logical move from
+      // the player's perspective.
+      this.captureUndoSnapshot();
+
       // Recycle waste back to stock
       console.log('Recycling waste back to stock');
       while (this.gameState.waste.length > 0) {
