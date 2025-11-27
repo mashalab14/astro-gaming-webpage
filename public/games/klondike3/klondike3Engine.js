@@ -823,6 +823,9 @@ class Klondike3Engine {
 
   /**
    * Try to move top waste card to a foundation
+   *
+   * Delegates the actual move to `moveCardToFoundation` so scoring, move
+   * counting, win checks, and Undo snapshot all behave consistently.
    */
   tryMoveWasteToFoundation() {
     if (this.gameState.waste.length === 0) return false;
@@ -830,20 +833,19 @@ class Klondike3Engine {
     const card = this.gameState.waste[this.gameState.waste.length - 1];
     const foundationIndex = this.canMoveToFoundation(card);
     
-    if (foundationIndex !== -1) {
-      this.gameState.waste.pop();
-      this.gameState.foundations[foundationIndex].push(card);
-      
-      // Scoring: +10 for moving to foundation
-      this.gameState.score += 10;
-      
-      this.registerMove();
-      this.updateDisplay();
-      this.checkWinCondition();
-      return true;
+    if (foundationIndex === -1) {
+      return false;
     }
-    
-    return false;
+
+    // Delegate the actual move to the generic helper so scoring, move
+    // counting, win checks and Undo snapshot all behave consistently.
+    const moved = this.moveCardToFoundation('waste', foundationIndex, card);
+    if (moved) {
+      // moveCardToFoundation already calls registerMove and checkWinCondition.
+      // Here we only need to update the visual layout.
+      this.updateDisplay();
+    }
+    return moved;
   }
 
 /**
@@ -861,23 +863,16 @@ tryMoveTableauToFoundation(colIndex) {
   // 1) Try to move to foundation
   const foundationIndex = this.canMoveToFoundation(card);
   if (foundationIndex !== -1) {
-    column.pop();
-    this.gameState.foundations[foundationIndex].push(card);
-    
-    // Scoring: +10 for moving to foundation
-    this.gameState.score += 10;
-    
-    // Check if we need to flip the next card
-    if (column.length > 0 && !column[column.length - 1].faceUp) {
-      column[column.length - 1].faceUp = true;
-      // Scoring: +5 for revealing a card
-      this.gameState.score += 5;
+    const fromLocation = `tableau-${colIndex}`;
+
+    // Delegate to the generic helper so that Undo, scoring, card flipping and
+    // move counting all behave exactly the same as for other foundation moves.
+    const movedToFoundation = this.moveCardToFoundation(fromLocation, foundationIndex, card);
+    if (movedToFoundation) {
+      // moveCardToFoundation already registered the move and checked for win.
+      this.updateDisplay();
+      return true;
     }
-    
-    this.registerMove();
-    this.updateDisplay();
-    this.checkWinCondition();
-    return true;
   }
 
   // 2) If no foundation move, try to move to the first valid tableau column from the left
