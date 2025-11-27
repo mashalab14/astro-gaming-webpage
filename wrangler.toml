@@ -1,7 +1,6 @@
 
 
 name = "free-onlinegamesapp"
-main = "./dist/_worker.js"
 compatibility_date = "2025-02-20"
 
 # D1 binding for user tracking database
