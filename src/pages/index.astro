@@ -1074,6 +1074,16 @@ import Footer from '../components/Footer.astro';
         }
       });
 
+      // Wire up Undo button to engine interface
+      const undoBtn = document.getElementById('undoBtn');
+      undoBtn?.addEventListener('click', () => {
+        // Delegate to the engine's undoLastMove, which restores gameState,
+        // re-renders the board, and updates HUD via onMove.
+        if (gameEngine && typeof gameEngine.undoLastMove === 'function') {
+          gameEngine.undoLastMove();
+        }
+      });
+
       // More dropdown functionality
       const moreDropdown = document.querySelector('.more-dropdown');
       const moreTrigger = document.getElementById('moreTrigger');
