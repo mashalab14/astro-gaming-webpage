@@ -7,7 +7,19 @@
   <div class="game-controls">
     <button id="newDealBtn" class="control-btn" type="button" aria-label="New Deal">New Deal</button>
     <button id="undoBtn" class="control-btn" type="button" aria-label="Undo">Undo</button>
-    <button id="hintBtn" class="control-btn" type="button" aria-label="Hint">Hint</button>
+    <!-- Hint button
+         - Triggered by user click or keyboard shortcut "H" (wired in index.astro).
+         - Asks the current game engine to compute and highlight a suggested move.
+         - Does not move cards automatically or change score/timer; it is purely visual help. -->
+    <button
+      id="hintBtn"
+      class="control-btn"
+      type="button"
+      aria-label="Hint"
+      title="Hint (H)"
+    >
+      Hint
+    </button>
     
     <!-- More dropdown -->
     <div class="more-dropdown">

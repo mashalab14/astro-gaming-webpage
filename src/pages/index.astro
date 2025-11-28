@@ -1087,6 +1087,25 @@ import Footer from '../components/Footer.astro';
         }
       });
 
+      // Wire up Hint button to engine interface
+      // - The button itself lives in the shared GameSurface header.
+      // - Here in the shell, we connect that button to the Klondike engine.
+      // - If other games are added later, they can reuse the same id and call their own requestHint implementation.
+      const hintBtn = document.getElementById('hintBtn');
+      hintBtn?.addEventListener('click', () => {
+        // Only proceed if the current game engine exposes a requestHint function.
+        // This keeps the shell defensive if some games do not support hints yet.
+        if (gameEngine && typeof gameEngine.requestHint === 'function') {
+          // Hint is pure visual help
+          // - It does not change score, moves, or flip hidden cards.
+          // - It simply highlights a suggested move using the hint CSS classes.
+          gameEngine.requestHint();
+        } else {
+          // If there is no requestHint on the engine, do nothing but log once for debugging.
+          console.warn('Hint button clicked but current game engine has no requestHint method');
+        }
+      });
+
       // More dropdown functionality
       const moreDropdown = document.querySelector('.more-dropdown');
       const moreTrigger = document.getElementById('moreTrigger');
@@ -1461,6 +1480,17 @@ import Footer from '../components/Footer.astro';
             gameEngine.undoLastMove();
           }
           return; // Do not process other shortcuts for this keypress
+        }
+
+        // H -> Show a hint for the current game state
+        // - No modifiers, to keep it simple for players.
+        // - Uses the engine hint logic, which only highlights a candidate move.
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key && e.key.toLowerCase() === 'h') {
+          // We still allow other handlers after this one, so no early return.
+          if (gameEngine && typeof gameEngine.requestHint === 'function') {
+            e.preventDefault();
+            gameEngine.requestHint();
+          }
         }
 
         // Esc -> Open/close in-game menu

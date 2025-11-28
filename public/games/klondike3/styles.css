@@ -302,6 +302,63 @@
   transition: opacity 0.1s ease;
 }
 
+/* Hint highlight styles
+   - Source: the card the player should pick up.
+   - Destination: the pile the player should drop on.
+   * These are purely visual and controlled from the engine (requestHint). */
+.klondike-hint-source {
+  /* Make the suggested card stand out clearly above others */
+  outline: 3px solid rgba(255, 255, 0, 0.9); /* strong yellow outline */
+  outline-offset: 2px;
+  transform: translateY(-3px) scale(1.03);
+  z-index: 5;
+  animation: klondike-hint-pulse-source 0.9s ease-in-out 0s 2 alternate;
+}
+
+.klondike-hint-dest {
+  /* Highlight the target pile/card without changing its layout */
+  box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.7); /* soft light-blue ring */
+  border-color: rgba(255, 255, 255, 0.7);
+  animation: klondike-hint-pulse-dest 0.9s ease-in-out 0s 2 alternate;
+}
+
+/* Keep hint styles lightweight on very small screens */
+@media (max-width: 480px) {
+  .klondike-hint-source {
+    outline-width: 2px;
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .klondike-hint-dest {
+    box-shadow: 0 0 0 2px rgba(173, 216, 230, 0.7);
+  }
+}
+
+/* Subtle pulse animations to draw the eye without being annoying */
+@keyframes klondike-hint-pulse-source {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 255, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 255, 0, 1);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(255, 255, 0, 0.7);
+  }
+}
+
+@keyframes klondike-hint-pulse-dest {
+  0% {
+    box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(173, 216, 230, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.6);
+  }
+}
+
 /* No-move feedback for waste pile */
 .klondike-no-move {
   animation: shake 0.15s ease-in-out;

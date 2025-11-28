@@ -13,6 +13,8 @@ class Klondike3Engine {
     this.firstMoveTimestamp = null;
     this.selectedCard = null;
     this.dragData = null;
+    // Stores the last computed hint move so we can reapply or clear visuals.
+    this.currentHint = null;
   }
 
   /**
@@ -90,6 +92,8 @@ class Klondike3Engine {
     };
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    // Reset any active hint when a fresh state is created.
+    this.currentHint = null;
   }
 
   /**
@@ -411,6 +415,9 @@ class Klondike3Engine {
     if (undoManager && typeof undoManager.reset === 'function') {
       undoManager.reset();
     }
+    // Clear any stale hint visuals before setting up a fresh deal.
+    this.clearHintHighlight();
+    this.currentHint = null;
 
     // Reset game state
     this.gameState = {
@@ -424,6 +431,8 @@ class Klondike3Engine {
     
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    // New deal means any previous hint is no longer relevant.
+    this.currentHint = null;
 
     // Create and shuffle deck
     const deck = this.createDeck();
@@ -618,6 +627,221 @@ class Klondike3Engine {
       setTimeout(() => {
         wastePile.classList.remove('klondike-no-move');
       }, 150);
+    }
+  }
+
+  /**
+   * Public API: compute and show a hint for the current position.
+   *
+   * The hint:
+   * - Uses only visible move information.
+   * - Does not flip any cards or modify score or move counters.
+   * - Only adds temporary highlight classes to the source and destination.
+   *
+   * This method is intended to be called by the shell when the user presses
+   * the global "Hint" button.
+   */
+  requestHint() {
+    if (!this.rootElement || !this.gameState) {
+      return;
+    }
+
+    // Clear any previous hint visual before computing a new one.
+    this.clearHintHighlight();
+    this.currentHint = null;
+
+    const move = this.computeHintMove();
+    if (!move) {
+      // No legal moves found - nothing to highlight.
+      return;
+    }
+
+    this.currentHint = move;
+    this.applyHintHighlight(move);
+  }
+
+  /**
+   * Internal helper: compute the best hint move according to this priority:
+   * 1) Any move from tableau that will flip a face-down card underneath.
+   * 2) Tableau to foundation moves.
+   * 3) Waste to tableau moves.
+   * 4) Other tableau to tableau moves.
+   *
+   * Only visible moves are considered. The hint itself never flips cards
+   * or changes the game state; it just returns a structured description.
+   *
+   * Returns:
+   * - An object describing the move, or
+   * - null if no legal moves exist.
+   */
+  computeHintMove() {
+    if (!this.gameState) {
+      return null;
+    }
+
+    const priority1 = [];
+    const priority2 = [];
+    const priority3 = [];
+    const priority4 = [];
+
+    // 1 + 2 + 4: tableau-based moves using the top face-up card in each column.
+    for (let colIndex = 0; colIndex < this.gameState.tableau.length; colIndex++) {
+      const column = this.gameState.tableau[colIndex];
+      if (!column || column.length === 0) continue;
+
+      const topIndex = column.length - 1;
+      const card = column[topIndex];
+      if (!card.faceUp) {
+        // If the top card is face down, the column has no direct visible moves.
+        continue;
+      }
+
+      const from = { zone: 'tableau', colIndex, cardId: card.id };
+
+      // 2) Try tableau -> foundation.
+      const foundationIndex = this.canMoveToFoundation(card);
+      if (foundationIndex !== -1) {
+        const moveToFoundation = {
+          type: 'tableau-to-foundation',
+          from,
+          to: { zone: 'foundation', foundationIndex },
+          willFlip: this.willTableauMoveFlip(colIndex, 1)
+        };
+        if (moveToFoundation.willFlip) {
+          priority1.push(moveToFoundation);
+        } else {
+          priority2.push(moveToFoundation);
+        }
+      }
+
+      // 1 + 4) Try tableau -> tableau using the same top card.
+      for (let targetCol = 0; targetCol < this.gameState.tableau.length; targetCol++) {
+        if (targetCol === colIndex) continue;
+
+        if (this.canMoveToTableau([card], targetCol)) {
+          const moveToTableau = {
+            type: 'tableau-to-tableau',
+            from,
+            to: { zone: 'tableau', colIndex: targetCol },
+            willFlip: this.willTableauMoveFlip(colIndex, 1)
+          };
+
+          if (moveToTableau.willFlip) {
+            priority1.push(moveToTableau);
+          } else {
+            priority4.push(moveToTableau);
+          }
+
+          // Use the first valid tableau destination from the left for this source.
+          break;
+        }
+      }
+    }
+
+    // 3) Waste -> tableau moves using the top waste card.
+    if (this.gameState.waste && this.gameState.waste.length > 0) {
+      const topWaste = this.gameState.waste[this.gameState.waste.length - 1];
+      const fromWaste = { zone: 'waste', cardId: topWaste.id };
+
+      for (let colIndex = 0; colIndex < this.gameState.tableau.length; colIndex++) {
+        if (this.canMoveToTableau([topWaste], colIndex)) {
+          const wasteMove = {
+            type: 'waste-to-tableau',
+            from: fromWaste,
+            to: { zone: 'tableau', colIndex },
+            willFlip: false // Waste moves never flip a tableau card on their own.
+          };
+          priority3.push(wasteMove);
+          // First valid tableau column from the left is enough.
+          break;
+        }
+      }
+    }
+
+    if (priority1.length > 0) return priority1[0];
+    if (priority2.length > 0) return priority2[0];
+    if (priority3.length > 0) return priority3[0];
+    if (priority4.length > 0) return priority4[0];
+
+    return null;
+  }
+
+  /**
+   * Internal helper: determine if moving `count` cards from the top of a
+   * tableau column will immediately flip a face-down card.
+   *
+   * This mirrors the logic in `moveCardsToTableau` and `moveCardToFoundation`:
+   * after removing `count` cards from the top, if the new top card exists
+   * and is face down, it will be flipped as part of that move.
+   *
+   * Note: The hint system uses this information only to prioritise moves.
+   * It never reveals or shows the hidden card itself.
+   */
+  willTableauMoveFlip(colIndex, count) {
+    if (!this.gameState || !this.gameState.tableau) {
+      return false;
+    }
+    const column = this.gameState.tableau[colIndex];
+    if (!column || column.length <= count) {
+      return false;
+    }
+
+    const newTop = column[column.length - 1 - count];
+    return !!newTop && !newTop.faceUp;
+  }
+
+  /**
+   * Internal helper: remove hint highlight classes from all elements.
+   * This does not change any game state; it only touches DOM classes.
+   */
+  clearHintHighlight() {
+    if (!this.rootElement) return;
+
+    this.rootElement.querySelectorAll('.klondike-hint-source').forEach(el => {
+      el.classList.remove('klondike-hint-source');
+    });
+    this.rootElement.querySelectorAll('.klondike-hint-dest').forEach(el => {
+      el.classList.remove('klondike-hint-dest');
+    });
+  }
+
+  /**
+   * Internal helper: apply hint highlight classes to the source card and
+   * destination pile for the given move.
+   *
+   * - Source highlight goes on the concrete card element (waste or tableau).
+   * - Destination highlight goes on the pile container (tableau column or
+   *   foundation pile), so it is obvious where the card should be moved.
+   */
+  applyHintHighlight(move) {
+    if (!this.rootElement || !move) return;
+
+    // Highlight the source card.
+    let sourceElement = null;
+    if (move.from.zone === 'waste') {
+      sourceElement = this.rootElement.querySelector(
+        `.klondike-card[data-location="waste"][data-card-id="${move.from.cardId}"]`
+      );
+    } else if (move.from.zone === 'tableau') {
+      sourceElement = this.rootElement.querySelector(
+        `.klondike-card[data-location="tableau-${move.from.colIndex}"][data-card-id="${move.from.cardId}"]`
+      );
+    }
+
+    if (sourceElement) {
+      sourceElement.classList.add('klondike-hint-source');
+    }
+
+    // Highlight the destination pile.
+    let destElement = null;
+    if (move.to.zone === 'tableau') {
+      destElement = this.rootElement.querySelector(`#tableau-${move.to.colIndex}`);
+    } else if (move.to.zone === 'foundation') {
+      destElement = this.rootElement.querySelector(`#foundation-${move.to.foundationIndex}`);
+    }
+
+    if (destElement) {
+      destElement.classList.add('klondike-hint-dest');
     }
   }
 
@@ -1083,6 +1307,10 @@ tryMoveTableauToFoundation(colIndex) {
    * Register a move and handle callbacks
    */
   registerMove() {
+    // Any real move changes the layout, so the previous hint is no longer valid.
+    // Clear both the visual highlight and the stored hint description.
+    this.clearHintHighlight();
+    this.currentHint = null;
     if (!this.firstMoveDone) {
       this.firstMoveDone = true;
       this.firstMoveTimestamp = Date.now();
@@ -1133,6 +1361,11 @@ tryMoveTableauToFoundation(colIndex) {
 
     // Replace the current game state with the restored snapshot.
     this.gameState = previousState;
+
+    // Undo changes the board to a prior snapshot, so any previous hint is invalid.
+    // Clear hint visuals and reset the stored hint move before re-rendering.
+    this.clearHintHighlight();
+    this.currentHint = null;
 
     // Re-render all piles so the UI matches the restored data.
     this.updateDisplay();
@@ -1317,6 +1550,7 @@ tryMoveTableauToFoundation(colIndex) {
     this.gameState = null;
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    this.currentHint = null;
   }
 }
 
