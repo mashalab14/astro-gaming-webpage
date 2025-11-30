@@ -1198,6 +1198,7 @@ import Footer from '../components/Footer.astro';
         gamesWon: parseInt(localStorage.getItem('stats.gamesWon') || '0'),
         deals: parseInt(localStorage.getItem('stats.deals') || '0')
       };
+      let hasStartedThisDeal = false;
       
       // Timer system
       let gameTimer = {
@@ -1266,6 +1267,13 @@ import Footer from '../components/Footer.astro';
       const shellCallbacks = {
         onFirstMove: () => {
           console.log('🎮 First move detected, starting timer');
+          if (!hasStartedThisDeal) {
+            hasStartedThisDeal = true;
+            gameStats.deals++;
+            gameStats.gamesPlayed++;
+            localStorage.setItem('stats.deals', gameStats.deals.toString());
+            localStorage.setItem('stats.gamesPlayed', gameStats.gamesPlayed.toString());
+          }
           startTimer();
         },
         
@@ -1300,10 +1308,7 @@ import Footer from '../components/Footer.astro';
         onReset: () => {
           console.log('🔄 Game reset');
           resetTimer();
-          gameStats.deals++;
-          gameStats.gamesPlayed++;
-          localStorage.setItem('stats.deals', gameStats.deals.toString());
-          localStorage.setItem('stats.gamesPlayed', gameStats.gamesPlayed.toString());
+          hasStartedThisDeal = false;
         }
       };
       
