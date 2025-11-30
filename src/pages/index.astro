@@ -1270,7 +1270,6 @@ import Footer from '../components/Footer.astro';
           if (!hasStartedThisDeal) {
             hasStartedThisDeal = true;
             gameStats.gamesPlayed++;
-            localStorage.setItem('stats.deals', gameStats.deals.toString());
             localStorage.setItem('stats.gamesPlayed', gameStats.gamesPlayed.toString());
           }
           startTimer();
@@ -1307,7 +1306,8 @@ import Footer from '../components/Footer.astro';
         onReset: () => {
           console.log('🔄 Game reset');
           resetTimer();
-          gameStats.deals++;          
+          gameStats.deals++;
+          localStorage.setItem('stats.deals', gameStats.deals.toString());
           hasStartedThisDeal = false;
         }
       };
