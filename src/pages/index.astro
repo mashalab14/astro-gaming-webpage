@@ -1196,7 +1196,10 @@ import Footer from '../components/Footer.astro';
       let gameStats = {
         gamesPlayed: parseInt(localStorage.getItem('stats.gamesPlayed') || '0'),
         gamesWon: parseInt(localStorage.getItem('stats.gamesWon') || '0'),
-        deals: parseInt(localStorage.getItem('stats.deals') || '0')
+        deals: parseInt(localStorage.getItem('stats.deals') || '0'),
+        bestTimeSeconds: parseInt(localStorage.getItem('stats.bestTimeSeconds') || '0'),
+        bestScore: parseInt(localStorage.getItem('stats.bestScore') || '0'),
+        totalMoves: parseInt(localStorage.getItem('stats.totalMoves') || '0')
       };
       let hasStartedThisDeal = false;
       
@@ -1287,6 +1290,10 @@ import Footer from '../components/Footer.astro';
           if (hudStock && moveData.stockCount !== undefined) {
             hudStock.textContent = `Stock: ${moveData.stockCount}`;
           }
+
+          // Track lifetime total moves
+          gameStats.totalMoves++;
+          localStorage.setItem('stats.totalMoves', gameStats.totalMoves.toString());
         },
         
         onWin: (winData) => {
@@ -1294,6 +1301,23 @@ import Footer from '../components/Footer.astro';
           stopTimer();
           gameStats.gamesWon++;
           localStorage.setItem('stats.gamesWon', gameStats.gamesWon.toString());
+
+          // Update best time (store in seconds, lower is better)
+          const finishSeconds = typeof winData.timeSeconds === 'number'
+            ? winData.timeSeconds
+            : gameTimer.elapsed;
+          if (finishSeconds > 0 && (gameStats.bestTimeSeconds === 0 || finishSeconds < gameStats.bestTimeSeconds)) {
+            gameStats.bestTimeSeconds = finishSeconds;
+            localStorage.setItem('stats.bestTimeSeconds', gameStats.bestTimeSeconds.toString());
+          }
+
+          // Update best score (higher is better)
+          const finishScore = typeof winData.score === 'number' ? winData.score : 0;
+          if (finishScore > 0 && finishScore > gameStats.bestScore) {
+            gameStats.bestScore = finishScore;
+            localStorage.setItem('stats.bestScore', gameStats.bestScore.toString());
+          }
+
           showWinModal(winData);
         },
         
