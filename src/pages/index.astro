@@ -1199,7 +1199,7 @@ import Footer from '../components/Footer.astro';
         deals: parseInt(localStorage.getItem('stats.deals') || '0'),
         bestTimeSeconds: parseInt(localStorage.getItem('stats.bestTimeSeconds') || '0'),
         bestScore: parseInt(localStorage.getItem('stats.bestScore') || '0'),
-        totalMoves: parseInt(localStorage.getItem('stats.totalMoves') || '0')
+        bestMoves: parseInt(localStorage.getItem('stats.bestMoves') || '0')
       };
       let hasStartedThisDeal = false;
       
@@ -1290,10 +1290,6 @@ import Footer from '../components/Footer.astro';
           if (hudStock && moveData.stockCount !== undefined) {
             hudStock.textContent = `Stock: ${moveData.stockCount}`;
           }
-
-          // Track lifetime total moves
-          gameStats.totalMoves++;
-          localStorage.setItem('stats.totalMoves', gameStats.totalMoves.toString());
         },
         
         onWin: (winData) => {
@@ -1316,6 +1312,13 @@ import Footer from '../components/Footer.astro';
           if (finishScore > 0 && finishScore > gameStats.bestScore) {
             gameStats.bestScore = finishScore;
             localStorage.setItem('stats.bestScore', gameStats.bestScore.toString());
+          }
+
+          // Update best moves (lower is better, only on wins)
+          const finishMoves = typeof winData.moves === 'number' ? winData.moves : 0;
+          if (finishMoves > 0 && (gameStats.bestMoves === 0 || finishMoves < gameStats.bestMoves)) {
+            gameStats.bestMoves = finishMoves;
+            localStorage.setItem('stats.bestMoves', gameStats.bestMoves.toString());
           }
 
           showWinModal(winData);
