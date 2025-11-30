@@ -1269,7 +1269,6 @@ import Footer from '../components/Footer.astro';
           console.log('🎮 First move detected, starting timer');
           if (!hasStartedThisDeal) {
             hasStartedThisDeal = true;
-            gameStats.deals++;
             gameStats.gamesPlayed++;
             localStorage.setItem('stats.deals', gameStats.deals.toString());
             localStorage.setItem('stats.gamesPlayed', gameStats.gamesPlayed.toString());
@@ -1308,6 +1307,7 @@ import Footer from '../components/Footer.astro';
         onReset: () => {
           console.log('🔄 Game reset');
           resetTimer();
+          gameStats.deals++;          
           hasStartedThisDeal = false;
         }
       };
