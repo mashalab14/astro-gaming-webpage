@@ -8,11 +8,151 @@ class Klondike3Engine {
     this.rootElement = null;
     this.callbacks = null;
     this.gameState = null;
-    this.eventListeners = [];
+    this.eventListeners = []; // Only for global/long-lived listeners
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
     this.selectedCard = null;
     this.dragData = null;
+    // Stores the last computed hint move so we can reapply or clear visuals.
+    this.currentHint = null;
+    
+    // Animation state flags
+    this.isMoveAnimating = false;
+    this.isFlipAnimating = false;
+    
+    // Track cards revealed in the last move for flip animation
+    this.revealedCardIds = new Set();
+    
+    // Central animation speed system (single source of truth)
+    this.animationSpeedPreset = "normal"; // "slow" | "normal" | "fast"
+    this.animationBaseMs = 80; // Base unit for normal preset
+    this.animationsEnabled = true; // Default: animations on
+    
+    // Other game options
+    this.autoplayMode = "obvious"; // "off" | "obvious" | "won"
+    this.soundEnabled = true; // Default: sound on
+  }
+  
+  /**
+   * Get combined animation state
+   */
+  get isAnimating() {
+    return this.isMoveAnimating || this.isFlipAnimating;
+  }
+  
+  /**
+   * Update engine options from shell settings
+   * @param {Object} options - Configuration options
+   * @param {string} options.animationSpeedPreset - "slow" | "normal" | "fast"
+   * @param {boolean} options.animationsEnabled - Enable/disable animations
+   * @param {string} options.autoplayMode - "off" | "obvious" | "won"
+   * @param {boolean} options.soundEnabled - Enable/disable sound effects
+   */
+  updateOptions(options = {}) {
+    console.log('🎮 Engine: updateOptions called with:', options);
+    
+    let presetChanged = false;
+    let animationsToggled = false;
+    
+    // Update animation speed preset
+    if (options.animationSpeedPreset && 
+        ['slow', 'normal', 'fast'].includes(options.animationSpeedPreset)) {
+      if (this.animationSpeedPreset !== options.animationSpeedPreset) {
+        this.animationSpeedPreset = options.animationSpeedPreset;
+        presetChanged = true;
+        console.log(`🎮 Engine: Animation speed preset set to "${this.animationSpeedPreset}"`);
+      }
+    }
+    
+    // Update animations enabled/disabled
+    if (typeof options.animationsEnabled === 'boolean') {
+      if (this.animationsEnabled !== options.animationsEnabled) {
+        this.animationsEnabled = options.animationsEnabled;
+        animationsToggled = true;
+        console.log(`🎮 Engine: Animations ${this.animationsEnabled ? 'enabled' : 'disabled'}`);
+      }
+    }
+    
+    // Recompute animationBaseMs based on current state
+    // This is the ONLY place that sets animationBaseMs
+    if (presetChanged || animationsToggled) {
+      if (!this.animationsEnabled) {
+        // Animations disabled: use 0 for truly instant jumps
+        this.animationBaseMs = 0;
+        console.log('🎮 Engine: animationBaseMs set to 0 (animations disabled)');
+      } else {
+        // Animations enabled: use preset value
+        const presetMap = { fast: 40, normal: 80, slow: 400 };
+        this.animationBaseMs = presetMap[this.animationSpeedPreset] || 80;
+        console.log(`🎮 Engine: animationBaseMs set to ${this.animationBaseMs} (${this.animationSpeedPreset} preset)`);
+      }
+    }
+    
+    // Store other options for future use (placeholders for future features)
+    if (options.autoplayMode) {
+      this.autoplayMode = options.autoplayMode;
+      console.log(`🎮 Engine: Autoplay mode set to "${this.autoplayMode}" (not yet implemented)`);
+    }
+    
+    if (typeof options.soundEnabled === 'boolean') {
+      this.soundEnabled = options.soundEnabled;
+      console.log(`🎮 Engine: Sound ${this.soundEnabled ? 'enabled' : 'disabled'} (not yet implemented)`);
+    }
+  }
+  
+  /**
+   * Calculate animation durations based on current animationBaseMs
+   * When animations are disabled, animationBaseMs will be 0 or 1 (near instant)
+   * When animations are enabled, animationBaseMs reflects the preset (40/80/160)
+   */
+  getAnimationDurations() {
+    // Use animationBaseMs as the single source of truth
+    // All durations scale proportionally from this base
+    return {
+      moveDurationMs: 2 * this.animationBaseMs,      // Normal: 160ms, Fast: 80ms, Slow: 320ms, Off: 0-2ms
+      flipTotalMs: 2.5 * this.animationBaseMs,       // Normal: 200ms, Fast: 100ms, Slow: 400ms, Off: 0-2.5ms
+      flipMidpointMs: 1.25 * this.animationBaseMs,   // Normal: 100ms, Fast: 50ms, Slow: 200ms, Off: 0-1.25ms
+      stockDelayMs: 1 * this.animationBaseMs         // Normal: 80ms, Fast: 40ms, Slow: 160ms, Off: 0-1ms
+    };
+  }
+
+  /**
+   * Internal helper: get a reference to the shared global UndoManager, if available.
+   *
+   * We keep this in one place so that if the integration changes (for example,
+   * different global name or no Undo support on some pages), we only have to
+   * adjust this method.
+   */
+  getUndoManager() {
+    // Defensive: in a browser environment, UndoManager is attached to window
+    // by src/scripts/undoManager.js. If it is not available, we return null
+    // and the calling code should simply skip Undo integration.
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const maybeManager = window.UndoManager;
+    if (!maybeManager) {
+      return null;
+    }
+    return maybeManager;
+  }
+
+  /**
+   * Internal helper: capture a snapshot of the current game state for Undo.
+   *
+   * Important:
+   * - We always push the full `this.gameState` object.
+   * - Call this exactly once for each logical move, and always BEFORE you
+   *   mutate `this.gameState` for that move.
+   */
+  captureUndoSnapshot() {
+    const undoManager = this.getUndoManager();
+    if (!undoManager || typeof undoManager.pushSnapshot !== 'function') {
+      return;
+    }
+    // We rely on UndoManager to deep-clone this object so future mutations
+    // do not affect history.
+    undoManager.pushSnapshot(this.gameState);
   }
 
   /**
@@ -51,6 +191,8 @@ class Klondike3Engine {
     };
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    // Reset any active hint when a fresh state is created.
+    this.currentHint = null;
   }
 
   /**
@@ -122,13 +264,15 @@ class Klondike3Engine {
       console.log('Stock pile clicked!');
       e.preventDefault();
       e.stopPropagation();
+      // Ignore clicks during animations
+      if (this.isAnimating) return;
       this.handleStockClick();
     };
     
     stockPile.addEventListener('click', stockClickHandler);
     this.eventListeners.push({ element: stockPile, event: 'click', handler: stockClickHandler });
     
-    // Add visual feedback on click
+    // Add visual feedback on click (these listeners are tied to DOM element lifecycle)
     stockPile.addEventListener('mousedown', () => {
       stockPile.style.transform = 'scale(0.95)';
     });
@@ -162,6 +306,8 @@ class Klondike3Engine {
         const clickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
+          // Ignore clicks during animations
+          if (this.isAnimating) return;
           const location = card.dataset.location;
 
           // Waste has its own behaviour: foundation first, then first valid tableau from left
@@ -220,8 +366,15 @@ class Klondike3Engine {
                 if (this.canMoveToTableau(stack, targetCol)) {
                   const moved = this.moveCardsToTableau(fromLocation, targetCol, stack);
                   if (moved) {
-                    // moveCardsToTableau already updates score and registers move
-                    this.updateDisplay();
+                    // Animate the card movement before updating display
+                    const tableauCard = this.rootElement.querySelector(
+                      `.klondike-card[data-location="tableau-${colIndex}"][data-card-id="${card.id}"]`
+                    );
+                    const targetElement = this.rootElement.querySelector(`#tableau-${targetCol}`);
+                    
+                    this.animateCardMovement(tableauCard, targetElement).then(() => {
+                      this.updateDisplay(0);
+                    });
                   }
                   return;
                 }
@@ -242,6 +395,11 @@ class Klondike3Engine {
         
         // Drag start handler
         const dragStartHandler = (e) => {
+          // Ignore drags during animations
+          if (this.isAnimating) {
+            e.preventDefault();
+            return;
+          }
           this.handleDragStart(e, card);
         };
         
@@ -260,16 +418,13 @@ class Klondike3Engine {
         if (isFaceUp && this.isCardDraggable(card)) {
           card.draggable = true;
           card.addEventListener('dragstart', dragStartHandler);
-          this.eventListeners.push({ element: card, event: 'dragstart', handler: dragStartHandler });
           
           // Ensure dragging state is always cleaned up, even on invalid drops
           card.addEventListener('dragend', dragEndHandler);
-          this.eventListeners.push({ element: card, event: 'dragend', handler: dragEndHandler });
         }
         
-        // Always attach single-click
+        // Always attach single-click (rely on DOM teardown for cleanup)
         card.addEventListener('click', clickHandler);
-        this.eventListeners.push({ element: card, event: 'click', handler: clickHandler });
         
         card.dataset.hasListeners = 'true';
       }
@@ -350,6 +505,8 @@ class Klondike3Engine {
     const dropHandler = (e) => {
       e.preventDefault();
       element.classList.remove('drag-over');
+      // Ignore drops during animations
+      if (this.isAnimating) return;
       this.handleDrop(e, dropZoneId);
     };
     
@@ -366,6 +523,18 @@ class Klondike3Engine {
    * Start a new deal - reset and shuffle cards
    */
   startNewDeal() {
+    // Reset Undo history for this new deal so old moves from the previous
+    // game do not leak into the new one.
+    const undoManager = this.getUndoManager();
+    if (undoManager && typeof undoManager.reset === 'function') {
+      undoManager.reset();
+    }
+    // Clear any stale hint visuals before setting up a fresh deal.
+    this.clearHintHighlight();
+    this.currentHint = null;
+    // Clear any revealed cards from previous game
+    this.revealedCardIds.clear();
+
     // Reset game state
     this.gameState = {
       stock: [],
@@ -378,6 +547,8 @@ class Klondike3Engine {
     
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    // New deal means any previous hint is no longer relevant.
+    this.currentHint = null;
 
     // Create and shuffle deck
     const deck = this.createDeck();
@@ -455,6 +626,10 @@ class Klondike3Engine {
     let moved = false;
 
     if (this.gameState.stock.length > 0) {
+      // This click will change the layout of stock/waste, so capture the
+      // current state once before we mutate it.
+      this.captureUndoSnapshot();
+
       // Draw up to 3 cards from stock to waste
       const drawCount = Math.min(3, this.gameState.stock.length);
       console.log('Drawing', drawCount, 'cards from stock');
@@ -466,6 +641,10 @@ class Klondike3Engine {
       }
       moved = true;
     } else if (this.gameState.waste.length > 0) {
+      // Recycling waste back to stock also counts as one logical move from
+      // the player's perspective.
+      this.captureUndoSnapshot();
+
       // Recycle waste back to stock
       console.log('Recycling waste back to stock');
       while (this.gameState.waste.length > 0) {
@@ -479,7 +658,9 @@ class Klondike3Engine {
     // Only register as a move if something actually changed
     if (moved) {
       this.registerMove();
-      this.updateDisplay();
+      // Update display with animation delay for stock/waste transition
+      const durations = this.getAnimationDurations();
+      this.updateDisplay(durations.stockDelayMs);
     }
   }
 
@@ -539,8 +720,13 @@ class Klondike3Engine {
     if (foundationIndex !== -1) {
       const movedToFoundation = this.moveCardToFoundation('waste', foundationIndex, topCard);
       if (movedToFoundation) {
-        // moveCardToFoundation already updates score, registers move, and checks win
-        this.updateDisplay();
+        // Animate the card movement before updating display
+        const wasteCard = this.rootElement.querySelector('.klondike-card[data-location="waste"]');
+        const foundationElement = this.rootElement.querySelector(`#foundation-${foundationIndex}`);
+        
+        this.animateCardMovement(wasteCard, foundationElement).then(() => {
+          this.updateDisplay(0);
+        });
       }
       return;
     }
@@ -550,8 +736,13 @@ class Klondike3Engine {
       if (this.canMoveToTableau([topCard], col)) {
         const movedToTableau = this.moveCardsToTableau('waste', col, [topCard]);
         if (movedToTableau) {
-          // moveCardsToTableau already updates score and registers move
-          this.updateDisplay();
+          // Animate the card movement before updating display
+          const wasteCard = this.rootElement.querySelector('.klondike-card[data-location="waste"]');
+          const tableauElement = this.rootElement.querySelector(`#tableau-${col}`);
+          
+          this.animateCardMovement(wasteCard, tableauElement).then(() => {
+            this.updateDisplay(0);
+          });
         }
         return;
       }
@@ -564,6 +755,221 @@ class Klondike3Engine {
       setTimeout(() => {
         wastePile.classList.remove('klondike-no-move');
       }, 150);
+    }
+  }
+
+  /**
+   * Public API: compute and show a hint for the current position.
+   *
+   * The hint:
+   * - Uses only visible move information.
+   * - Does not flip any cards or modify score or move counters.
+   * - Only adds temporary highlight classes to the source and destination.
+   *
+   * This method is intended to be called by the shell when the user presses
+   * the global "Hint" button.
+   */
+  requestHint() {
+    if (!this.rootElement || !this.gameState) {
+      return;
+    }
+
+    // Clear any previous hint visual before computing a new one.
+    this.clearHintHighlight();
+    this.currentHint = null;
+
+    const move = this.computeHintMove();
+    if (!move) {
+      // No legal moves found - nothing to highlight.
+      return;
+    }
+
+    this.currentHint = move;
+    this.applyHintHighlight(move);
+  }
+
+  /**
+   * Internal helper: compute the best hint move according to this priority:
+   * 1) Any move from tableau that will flip a face-down card underneath.
+   * 2) Tableau to foundation moves.
+   * 3) Waste to tableau moves.
+   * 4) Other tableau to tableau moves.
+   *
+   * Only visible moves are considered. The hint itself never flips cards
+   * or changes the game state; it just returns a structured description.
+   *
+   * Returns:
+   * - An object describing the move, or
+   * - null if no legal moves exist.
+   */
+  computeHintMove() {
+    if (!this.gameState) {
+      return null;
+    }
+
+    const priority1 = [];
+    const priority2 = [];
+    const priority3 = [];
+    const priority4 = [];
+
+    // 1 + 2 + 4: tableau-based moves using the top face-up card in each column.
+    for (let colIndex = 0; colIndex < this.gameState.tableau.length; colIndex++) {
+      const column = this.gameState.tableau[colIndex];
+      if (!column || column.length === 0) continue;
+
+      const topIndex = column.length - 1;
+      const card = column[topIndex];
+      if (!card.faceUp) {
+        // If the top card is face down, the column has no direct visible moves.
+        continue;
+      }
+
+      const from = { zone: 'tableau', colIndex, cardId: card.id };
+
+      // 2) Try tableau -> foundation.
+      const foundationIndex = this.canMoveToFoundation(card);
+      if (foundationIndex !== -1) {
+        const moveToFoundation = {
+          type: 'tableau-to-foundation',
+          from,
+          to: { zone: 'foundation', foundationIndex },
+          willFlip: this.willTableauMoveFlip(colIndex, 1)
+        };
+        if (moveToFoundation.willFlip) {
+          priority1.push(moveToFoundation);
+        } else {
+          priority2.push(moveToFoundation);
+        }
+      }
+
+      // 1 + 4) Try tableau -> tableau using the same top card.
+      for (let targetCol = 0; targetCol < this.gameState.tableau.length; targetCol++) {
+        if (targetCol === colIndex) continue;
+
+        if (this.canMoveToTableau([card], targetCol)) {
+          const moveToTableau = {
+            type: 'tableau-to-tableau',
+            from,
+            to: { zone: 'tableau', colIndex: targetCol },
+            willFlip: this.willTableauMoveFlip(colIndex, 1)
+          };
+
+          if (moveToTableau.willFlip) {
+            priority1.push(moveToTableau);
+          } else {
+            priority4.push(moveToTableau);
+          }
+
+          // Use the first valid tableau destination from the left for this source.
+          break;
+        }
+      }
+    }
+
+    // 3) Waste -> tableau moves using the top waste card.
+    if (this.gameState.waste && this.gameState.waste.length > 0) {
+      const topWaste = this.gameState.waste[this.gameState.waste.length - 1];
+      const fromWaste = { zone: 'waste', cardId: topWaste.id };
+
+      for (let colIndex = 0; colIndex < this.gameState.tableau.length; colIndex++) {
+        if (this.canMoveToTableau([topWaste], colIndex)) {
+          const wasteMove = {
+            type: 'waste-to-tableau',
+            from: fromWaste,
+            to: { zone: 'tableau', colIndex },
+            willFlip: false // Waste moves never flip a tableau card on their own.
+          };
+          priority3.push(wasteMove);
+          // First valid tableau column from the left is enough.
+          break;
+        }
+      }
+    }
+
+    if (priority1.length > 0) return priority1[0];
+    if (priority2.length > 0) return priority2[0];
+    if (priority3.length > 0) return priority3[0];
+    if (priority4.length > 0) return priority4[0];
+
+    return null;
+  }
+
+  /**
+   * Internal helper: determine if moving `count` cards from the top of a
+   * tableau column will immediately flip a face-down card.
+   *
+   * This mirrors the logic in `moveCardsToTableau` and `moveCardToFoundation`:
+   * after removing `count` cards from the top, if the new top card exists
+   * and is face down, it will be flipped as part of that move.
+   *
+   * Note: The hint system uses this information only to prioritise moves.
+   * It never reveals or shows the hidden card itself.
+   */
+  willTableauMoveFlip(colIndex, count) {
+    if (!this.gameState || !this.gameState.tableau) {
+      return false;
+    }
+    const column = this.gameState.tableau[colIndex];
+    if (!column || column.length <= count) {
+      return false;
+    }
+
+    const newTop = column[column.length - 1 - count];
+    return !!newTop && !newTop.faceUp;
+  }
+
+  /**
+   * Internal helper: remove hint highlight classes from all elements.
+   * This does not change any game state; it only touches DOM classes.
+   */
+  clearHintHighlight() {
+    if (!this.rootElement) return;
+
+    this.rootElement.querySelectorAll('.klondike-hint-source').forEach(el => {
+      el.classList.remove('klondike-hint-source');
+    });
+    this.rootElement.querySelectorAll('.klondike-hint-dest').forEach(el => {
+      el.classList.remove('klondike-hint-dest');
+    });
+  }
+
+  /**
+   * Internal helper: apply hint highlight classes to the source card and
+   * destination pile for the given move.
+   *
+   * - Source highlight goes on the concrete card element (waste or tableau).
+   * - Destination highlight goes on the pile container (tableau column or
+   *   foundation pile), so it is obvious where the card should be moved.
+   */
+  applyHintHighlight(move) {
+    if (!this.rootElement || !move) return;
+
+    // Highlight the source card.
+    let sourceElement = null;
+    if (move.from.zone === 'waste') {
+      sourceElement = this.rootElement.querySelector(
+        `.klondike-card[data-location="waste"][data-card-id="${move.from.cardId}"]`
+      );
+    } else if (move.from.zone === 'tableau') {
+      sourceElement = this.rootElement.querySelector(
+        `.klondike-card[data-location="tableau-${move.from.colIndex}"][data-card-id="${move.from.cardId}"]`
+      );
+    }
+
+    if (sourceElement) {
+      sourceElement.classList.add('klondike-hint-source');
+    }
+
+    // Highlight the destination pile.
+    let destElement = null;
+    if (move.to.zone === 'tableau') {
+      destElement = this.rootElement.querySelector(`#tableau-${move.to.colIndex}`);
+    } else if (move.to.zone === 'foundation') {
+      destElement = this.rootElement.querySelector(`#foundation-${move.to.foundationIndex}`);
+    }
+
+    if (destElement) {
+      destElement.classList.add('klondike-hint-dest');
     }
   }
 
@@ -622,7 +1028,13 @@ class Klondike3Engine {
     this.cleanupDragVisuals(success);
     
     if (success) {
-      this.updateDisplay();
+      // Animate the card movement from source to destination before updating display
+      const destElement = this.getDestinationElement(dropZoneId);
+      const sourceElement = this.dragData.element;
+      
+      this.animateCardMovement(sourceElement, destElement).then(() => {
+        this.updateDisplay(0); // Update display immediately after animation
+      });
     }
   }
 
@@ -769,6 +1181,9 @@ class Klondike3Engine {
 
   /**
    * Try to move top waste card to a foundation
+   *
+   * Delegates the actual move to `moveCardToFoundation` so scoring, move
+   * counting, win checks, and Undo snapshot all behave consistently.
    */
   tryMoveWasteToFoundation() {
     if (this.gameState.waste.length === 0) return false;
@@ -776,20 +1191,19 @@ class Klondike3Engine {
     const card = this.gameState.waste[this.gameState.waste.length - 1];
     const foundationIndex = this.canMoveToFoundation(card);
     
-    if (foundationIndex !== -1) {
-      this.gameState.waste.pop();
-      this.gameState.foundations[foundationIndex].push(card);
-      
-      // Scoring: +10 for moving to foundation
-      this.gameState.score += 10;
-      
-      this.registerMove();
-      this.updateDisplay();
-      this.checkWinCondition();
-      return true;
+    if (foundationIndex === -1) {
+      return false;
     }
-    
-    return false;
+
+    // Delegate the actual move to the generic helper so scoring, move
+    // counting, win checks and Undo snapshot all behave consistently.
+    const moved = this.moveCardToFoundation('waste', foundationIndex, card);
+    if (moved) {
+      // moveCardToFoundation already calls registerMove and checkWinCondition.
+      // Here we only need to update the visual layout.
+      this.updateDisplay();
+    }
+    return moved;
   }
 
 /**
@@ -807,23 +1221,23 @@ tryMoveTableauToFoundation(colIndex) {
   // 1) Try to move to foundation
   const foundationIndex = this.canMoveToFoundation(card);
   if (foundationIndex !== -1) {
-    column.pop();
-    this.gameState.foundations[foundationIndex].push(card);
-    
-    // Scoring: +10 for moving to foundation
-    this.gameState.score += 10;
-    
-    // Check if we need to flip the next card
-    if (column.length > 0 && !column[column.length - 1].faceUp) {
-      column[column.length - 1].faceUp = true;
-      // Scoring: +5 for revealing a card
-      this.gameState.score += 5;
+    const fromLocation = `tableau-${colIndex}`;
+
+    // Delegate to the generic helper so that Undo, scoring, card flipping and
+    // move counting all behave exactly the same as for other foundation moves.
+    const movedToFoundation = this.moveCardToFoundation(fromLocation, foundationIndex, card);
+    if (movedToFoundation) {
+      // Animate the card movement before updating display
+      const tableauCard = this.rootElement.querySelector(
+        `.klondike-card[data-location="tableau-${colIndex}"][data-card-id="${card.id}"]`
+      );
+      const foundationElement = this.rootElement.querySelector(`#foundation-${foundationIndex}`);
+      
+      this.animateCardMovement(tableauCard, foundationElement).then(() => {
+        this.updateDisplay(0);
+      });
+      return true;
     }
-    
-    this.registerMove();
-    this.updateDisplay();
-    this.checkWinCondition();
-    return true;
   }
 
   // 2) If no foundation move, try to move to the first valid tableau column from the left
@@ -834,8 +1248,15 @@ tryMoveTableauToFoundation(colIndex) {
     if (this.canMoveToTableau([card], targetCol)) {
       const movedToTableau = this.moveCardsToTableau(fromLocation, targetCol, [card]);
       if (movedToTableau) {
-        // moveCardsToTableau already updates score and registers move
-        this.updateDisplay();
+        // Animate the card movement before updating display
+        const tableauCard = this.rootElement.querySelector(
+          `.klondike-card[data-location="tableau-${colIndex}"][data-card-id="${card.id}"]`
+        );
+        const targetElement = this.rootElement.querySelector(`#tableau-${targetCol}`);
+        
+        this.animateCardMovement(tableauCard, targetElement).then(() => {
+          this.updateDisplay(0);
+        });
         return true;
       }
     }
@@ -856,6 +1277,11 @@ tryMoveTableauToFoundation(colIndex) {
     // Try to find a valid tableau position
     for (let col = 0; col < 7; col++) {
       if (this.canMoveToTableau([card], col)) {
+        // This is a legal move from foundation back to tableau. From the
+        // player's perspective this is one logical move, so we capture a
+        // snapshot once before we mutate any piles.
+        this.captureUndoSnapshot();
+
         // Remove from foundation
         foundation.pop();
         
@@ -866,7 +1292,13 @@ tryMoveTableauToFoundation(colIndex) {
         this.gameState.score -= 15;
         
         this.registerMove();
-        this.updateDisplay();
+        // Animate the card movement before updating display
+        const foundationCard = this.rootElement.querySelector(`#foundation-${foundationIndex} .klondike-card`);
+        const tableauElement = this.rootElement.querySelector(`#tableau-${col}`);
+        
+        this.animateCardMovement(foundationCard, tableauElement).then(() => {
+          this.updateDisplay(0);
+        });
         return true;
       }
     }
@@ -924,6 +1356,11 @@ tryMoveTableauToFoundation(colIndex) {
   moveCardsToTableau(fromLocation, toColIndex, cards) {
     if (!this.canMoveToTableau(cards, toColIndex)) return false;
     
+    // At this point we know the move is legal and will change the game
+    // state. Capture a single snapshot so one Undo step will revert this
+    // entire move (even if it moves a whole stack).
+    this.captureUndoSnapshot();
+    
     // Remove cards from source
     if (fromLocation === 'waste') {
       if (cards.length === 1 && this.gameState.waste.length > 0) {
@@ -947,7 +1384,10 @@ tryMoveTableauToFoundation(colIndex) {
       
       // Reveal top card if it became face down
       if (fromColumn.length > 0 && !fromColumn[fromColumn.length - 1].faceUp) {
-        fromColumn[fromColumn.length - 1].faceUp = true;
+        const revealedCard = fromColumn[fromColumn.length - 1];
+        revealedCard.faceUp = true;
+        // Track this card for flip animation
+        this.revealedCardIds.add(revealedCard.id);
         // Scoring: +5 for revealing a card
         this.gameState.score += 5;
       }
@@ -967,6 +1407,11 @@ tryMoveTableauToFoundation(colIndex) {
     const canMove = this.canMoveToFoundation(card);
     if (canMove !== foundationIndex) return false;
     
+    // This is a legal move of a single card into a foundation. Capture the
+    // current state so one Undo step will roll back this entire move,
+    // including score changes and any card flips.
+    this.captureUndoSnapshot();
+    
     // Remove card from source
     if (fromLocation === 'waste') {
       if (this.gameState.waste.length > 0) {
@@ -980,7 +1425,10 @@ tryMoveTableauToFoundation(colIndex) {
         
         // Reveal top card if it became face down
         if (column.length > 0 && !column[column.length - 1].faceUp) {
-          column[column.length - 1].faceUp = true;
+          const revealedCard = column[column.length - 1];
+          revealedCard.faceUp = true;
+          // Track this card for flip animation
+          this.revealedCardIds.add(revealedCard.id);
           // Scoring: +5 for revealing a card
           this.gameState.score += 5;
         }
@@ -1019,6 +1467,10 @@ tryMoveTableauToFoundation(colIndex) {
    * Register a move and handle callbacks
    */
   registerMove() {
+    // Any real move changes the layout, so the previous hint is no longer valid.
+    // Clear both the visual highlight and the stored hint description.
+    this.clearHintHighlight();
+    this.currentHint = null;
     if (!this.firstMoveDone) {
       this.firstMoveDone = true;
       this.firstMoveTimestamp = Date.now();
@@ -1037,6 +1489,58 @@ tryMoveTableauToFoundation(colIndex) {
         stockCount: this.gameState.stock.length
       });
     }
+  }
+
+  /**
+   * Undo the last logical move, if any, using the shared UndoManager.
+   *
+   * This is intended to be called by the shell when the user clicks the
+   * global Undo button in the footer. It restores the previous snapshot of
+   * `gameState`, re-renders the board, and notifies the shell via `onMove`
+   * so HUD elements (moves, score, stock count) stay in sync.
+   *
+   * Returns true if a move was undone, false if there was nothing to undo or
+   * UndoManager is not available.
+   */
+  undoLastMove() {
+    const undoManager = this.getUndoManager();
+    if (!undoManager ||
+        typeof undoManager.canUndo !== 'function' ||
+        typeof undoManager.undo !== 'function') {
+      return false;
+    }
+
+    if (!undoManager.canUndo()) {
+      return false;
+    }
+
+    const previousState = undoManager.undo();
+    if (!previousState) {
+      return false;
+    }
+
+    // Replace the current game state with the restored snapshot.
+    this.gameState = previousState;
+
+    // Undo changes the board to a prior snapshot, so any previous hint is invalid.
+    // Clear hint visuals and reset the stored hint move before re-rendering.
+    this.clearHintHighlight();
+    this.currentHint = null;
+
+    // Re-render all piles so the UI matches the restored data.
+    this.updateDisplay(0);
+
+    // Keep the shell HUD in sync. We reuse the existing onMove callback,
+    // using the restored state's counters.
+    if (this.callbacks && typeof this.callbacks.onMove === 'function') {
+      this.callbacks.onMove({
+        moves: this.gameState.moveCount,
+        score: this.gameState.score,
+        stockCount: this.gameState.stock.length
+      });
+    }
+
+    return true;
   }
 
   /**
@@ -1063,17 +1567,143 @@ tryMoveTableauToFoundation(colIndex) {
   }
 
   /**
-   * Update the visual display of all game elements
+   * Update the visual display of all game elements with optional animation delay
+   * @param {number} delayMs - Optional delay before updating display (for animations)
    */
-  updateDisplay() {
+  updateDisplay(delayMs = 0) {
+    if (delayMs > 0) {
+      setTimeout(() => {
+        this._performDisplayUpdate();
+      }, delayMs);
+    } else {
+      this._performDisplayUpdate();
+    }
+  }
+
+  /**
+   * Internal: perform the actual display update
+   */
+  _performDisplayUpdate() {
     this.updateStockAndWaste();
     this.updateFoundations();
     this.updateTableau();
     
-    // Reattach event listeners to new cards
-    setTimeout(() => {
+    // Reattach event listeners to new cards on next frame
+    requestAnimationFrame(() => {
       this.attachCardEventListeners();
-    }, 10);
+      
+      // Animate any newly revealed cards
+      this.animateRevealedCards();
+      
+      // Clear the revealed cards set for the next move
+      this.revealedCardIds.clear();
+    });
+  }
+
+  /**
+   * Animate newly revealed cards with a flip effect
+   * When animations are disabled, cards are rendered face-up immediately without flip
+   */
+  animateRevealedCards() {
+    if (!this.rootElement || this.revealedCardIds.size === 0) {
+      return;
+    }
+
+    const durations = this.getAnimationDurations();
+    
+    // Short-circuit: if animations are disabled, just re-render face-up immediately
+    if (!this.animationsEnabled || durations.flipTotalMs === 0) {
+      // Simply update the DOM to show cards face-up without animation
+      this.revealedCardIds.forEach(cardId => {
+        const cardElement = this.rootElement.querySelector(
+          `.klondike-card[data-card-id="${cardId}"][data-location^="tableau-"]`
+        );
+        
+        if (cardElement) {
+          const card = this.gameState ? 
+            Array.from(this.gameState.tableau.flat()).find(c => c.id === cardId) :
+            null;
+          
+          if (card && card.faceUp) {
+            const suitSymbols = ['♥', '♦', '♣', '♠'];
+            const suitColors = ['red', 'red', 'black', 'black'];
+            const rankNames = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            
+            cardElement.className = 'klondike-card klondike-card-face-up';
+            cardElement.innerHTML = `
+              <div class="klondike-card-content ${suitColors[card.suit]}">
+                <div class="klondike-card-rank">${rankNames[card.rank]}</div>
+                <div class="klondike-card-suit">${suitSymbols[card.suit]}</div>
+              </div>
+            `;
+          }
+        }
+      });
+      return;
+    }
+    
+    // Set animation flag to prevent user interactions during flip animations
+    // Track number of pending flips for proper state management
+    let pendingFlips = this.revealedCardIds.size;
+    this.isFlipAnimating = true;
+
+    this.revealedCardIds.forEach(cardId => {
+      // Find the card element in the DOM - it's currently rendered as face-down
+      const cardElement = this.rootElement.querySelector(
+        `.klondike-card[data-card-id="${cardId}"][data-location^="tableau-"]`
+      );
+      
+      if (cardElement) {
+        // Apply flip animation class to trigger the rotation
+        cardElement.classList.add('klondike-card-flipping');
+        // Set dynamic animation duration based on current preset
+        cardElement.style.animationDuration = `${durations.flipTotalMs}ms`;
+        
+        // Midway through the animation, update the card content
+        // The card is now rotated 90 degrees (edge-on), so content swap is invisible
+        setTimeout(() => {
+          // Find the actual card data
+          const card = this.gameState ? 
+            Array.from(this.gameState.tableau.flat()).find(c => c.id === cardId) :
+            null;
+          
+          if (card && card.faceUp) {
+            // Update the card to show face-up content
+            const suitSymbols = ['♥', '♦', '♣', '♠'];
+            const suitColors = ['red', 'red', 'black', 'black'];
+            const rankNames = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            
+            // Update class and keep the animation running
+            cardElement.className = `klondike-card klondike-card-face-up klondike-card-flipping`;
+            cardElement.innerHTML = `
+              <div class="klondike-card-content ${suitColors[card.suit]}">
+                <div class="klondike-card-rank">${rankNames[card.rank]}</div>
+                <div class="klondike-card-suit">${suitSymbols[card.suit]}</div>
+              </div>
+            `;
+          }
+        }, durations.flipMidpointMs);
+        
+        // Remove the animation class after it completes
+        setTimeout(() => {
+          cardElement.classList.remove('klondike-card-flipping');
+          
+          // Decrement pending flips counter
+          pendingFlips--;
+          
+          // Clear animation flag only when all flips are complete
+          if (pendingFlips === 0) {
+            this.isFlipAnimating = false;
+          }
+        }, durations.flipTotalMs);
+      } else {
+        // Card element not found, decrement counter immediately
+        pendingFlips--;
+        if (pendingFlips === 0) {
+          this.isFlipAnimating = false;
+        }
+      }
+    });
   }
 
   /**
@@ -1146,7 +1776,15 @@ tryMoveTableauToFoundation(colIndex) {
         columnElement.innerHTML = '<div class="klondike-card-placeholder klondike-empty-tableau"></div>';
       } else {
         column.forEach((card, index) => {
-          const cardElement = this.createCardElement(card, `tableau-${col}`);
+          // If this card was just revealed, render it as face-down initially
+          // The flip animation will change it to face-up
+          let cardToRender = card;
+          if (this.revealedCardIds.has(card.id) && card.faceUp) {
+            // Create a temporary face-down version for rendering
+            cardToRender = { ...card, faceUp: false };
+          }
+          
+          const cardElement = this.createCardElement(cardToRender, `tableau-${col}`);
           cardElement.style.position = 'absolute';
           cardElement.style.top = `${index * 20}px`;
           cardElement.style.zIndex = index;
@@ -1206,6 +1844,96 @@ tryMoveTableauToFoundation(colIndex) {
     this.gameState = null;
     this.firstMoveDone = false;
     this.firstMoveTimestamp = null;
+    this.currentHint = null;
+  }
+
+  /**
+   * Animate a card from source element to destination element
+   * @param {HTMLElement} sourceElement - The card element at its current position
+   * @param {HTMLElement} destElement - The destination pile/column element
+   * @returns {Promise} Resolves when animation is logically complete (may be before visual finish for overlap)
+   */
+  animateCardMovement(sourceElement, destElement) {
+    if (!sourceElement || !destElement) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      const durations = this.getAnimationDurations();
+      
+      // Short-circuit: if animations are disabled, resolve immediately without visual animation
+      if (!this.animationsEnabled || durations.moveDurationMs === 0) {
+        resolve();
+        return;
+      }
+      
+      // Set animation flag to prevent user interactions during animation
+      this.isMoveAnimating = true;
+
+      // Get bounding rectangles
+      const sourceRect = sourceElement.getBoundingClientRect();
+      const destRect = destElement.getBoundingClientRect();
+
+      // Calculate the offset needed to move from source to dest
+      const offsetX = destRect.left - sourceRect.left;
+      const offsetY = destRect.top - sourceRect.top;
+
+      // Hide the source element immediately - it's being moved
+      sourceElement.style.opacity = '0';
+      sourceElement.style.visibility = 'hidden';
+
+      // Clone the card element to animate it
+      const animatedCard = sourceElement.cloneNode(true);
+      animatedCard.className = `klondike-card ${sourceElement.className}`;
+      animatedCard.style.position = 'fixed';
+      animatedCard.style.left = sourceRect.left + 'px';
+      animatedCard.style.top = sourceRect.top + 'px';
+      animatedCard.style.width = sourceRect.width + 'px';
+      animatedCard.style.height = sourceRect.height + 'px';
+      animatedCard.style.zIndex = '9999';
+      animatedCard.style.pointerEvents = 'none';
+      animatedCard.style.transition = `all ${durations.moveDurationMs}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+      // Make sure animated card is fully visible
+      animatedCard.style.opacity = '1';
+      animatedCard.style.visibility = 'visible';
+
+      // Append to document body
+      document.body.appendChild(animatedCard);
+
+      // Trigger animation on next frame
+      requestAnimationFrame(() => {
+        animatedCard.style.left = (sourceRect.left + offsetX) + 'px';
+        animatedCard.style.top = (sourceRect.top + offsetY) + 'px';
+        animatedCard.style.transform = 'scale(0.95)';
+
+        // Resolve promise at 75% of movement to allow flip to start while card is still moving
+        // This creates visual overlap between movement and flip for smoother perceived action
+        const resolveTime = Math.floor(durations.moveDurationMs * 0.75);
+        
+        setTimeout(() => {
+          // Logical completion: flip animation can start now
+          resolve();
+        }, resolveTime);
+        
+        // Remove animated card after full animation completes
+        setTimeout(() => {
+          animatedCard.remove();
+          // Clear animation flag to allow user interactions
+          this.isMoveAnimating = false;
+        }, durations.moveDurationMs);
+      });
+    });
+  }
+
+  /**
+   * Get the destination element for a card move
+   * @param {string} toLocation - The destination location (e.g., 'foundation-0', 'tableau-3')
+   */
+  getDestinationElement(toLocation) {
+    if (toLocation.startsWith('foundation-')) {
+      return this.rootElement.querySelector(`#${toLocation}`);
+    } else if (toLocation.startsWith('tableau-')) {
+      return this.rootElement.querySelector(`#${toLocation}`);
+    }
+    return null;
   }
 }
 

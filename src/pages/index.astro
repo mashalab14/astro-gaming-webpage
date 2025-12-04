@@ -856,6 +856,7 @@ import Footer from '../components/Footer.astro';
         const newValue = !current;
         localStorage.setItem(soundKey, String(newValue));
         applySettings();
+        syncEngineSettings(); // Push to engine immediately
       });
 
       animationsToggle?.addEventListener('click', () => {
@@ -863,6 +864,7 @@ import Footer from '../components/Footer.astro';
         const newValue = !current;
         localStorage.setItem(animationsKey, String(newValue));
         applySettings();
+        syncEngineSettings(); // Push to engine immediately
       });
 
       // Radio button event listeners
@@ -870,6 +872,7 @@ import Footer from '../components/Footer.astro';
         radio.addEventListener('change', () => {
           if (radio.checked) {
             localStorage.setItem(autoplayKey, radio.value);
+            syncEngineSettings(); // Push to engine immediately
           }
         });
       });
@@ -878,6 +881,7 @@ import Footer from '../components/Footer.astro';
         radio.addEventListener('change', () => {
           if (radio.checked) {
             localStorage.setItem(animationSpeedKey, radio.value);
+            syncEngineSettings(); // Push to engine immediately
           }
         });
       });
@@ -1388,11 +1392,14 @@ import Footer from '../components/Footer.astro';
         gameEngine.mount(gameEngineMount, shellCallbacks);
         
         console.log('🎮 Klondike Draw 3 Solitaire engine initialized');
+        
+        // Sync settings from localStorage to engine immediately after mount
+        syncEngineSettings();
       }
       
       // Helper functions for preferences (renamed to avoid conflicts)
       function gameAutoplayPreference() {
-        return localStorage.getItem('game.autoplay') || 'whenObvious';
+        return localStorage.getItem('game.autoplay') || 'obvious';
       }
       
       function gameAnimationSpeedPreference() {
@@ -1409,6 +1416,28 @@ import Footer from '../components/Footer.astro';
       
       function gameHUDPreference(hudElement) {
         return localStorage.getItem(`hud.${hudElement}`) !== 'false';
+      }
+      
+      /**
+       * Bridge function: Push current settings from localStorage into the game engine
+       * This is the single source of truth for translating shell preferences to engine options
+       */
+      function syncEngineSettings() {
+        // Only sync if engine exists and has updateOptions method
+        if (!gameEngine || typeof gameEngine.updateOptions !== 'function') {
+          console.log('🔌 Bridge: Engine not ready for settings sync');
+          return;
+        }
+        
+        const settings = {
+          animationSpeedPreset: gameAnimationSpeedPreference(), // "slow" | "normal" | "fast"
+          animationsEnabled: gameAnimationPreference(),         // boolean
+          autoplayMode: gameAutoplayPreference(),              // "off" | "obvious" | "won"
+          soundEnabled: gameSoundPreference()                   // boolean
+        };
+        
+        console.log('🔌 Bridge: Syncing settings to engine:', settings);
+        gameEngine.updateOptions(settings);
       }
       
       // Game controls integrated with existing New Deal button

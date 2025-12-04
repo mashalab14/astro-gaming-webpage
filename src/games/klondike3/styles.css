@@ -105,6 +105,7 @@
   width: var(--card-width);
   min-height: 120px;
   position: relative;
+  transition: all 0.15s ease;
 }
 
 /* Card styling */
@@ -121,7 +122,7 @@
   box-sizing: border-box;
 }
 
-.klondike-card:hover {
+.klondike-card.klondike-card-face-up:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   border-color: rgba(255, 255, 255, 0.6);
@@ -278,11 +279,7 @@
 }
 
 /* Make cards draggable */
-.klondike-card[draggable="true"] {
-  cursor: move;
-}
-
-.klondike-card[draggable="true"]:hover {
+.klondike-card.klondike-card-face-up[draggable="true"]:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
@@ -302,6 +299,63 @@
   transition: opacity 0.1s ease;
 }
 
+/* Hint highlight styles
+   - Source: the card the player should pick up.
+   - Destination: the pile the player should drop on.
+   * These are purely visual and controlled from the engine (requestHint). */
+.klondike-hint-source {
+  /* Make the suggested card stand out clearly above others */
+  outline: 3px solid rgba(255, 255, 0, 0.9); /* strong yellow outline */
+  outline-offset: 2px;
+  transform: translateY(-3px) scale(1.03);
+  z-index: 5;
+  animation: klondike-hint-pulse-source 0.9s ease-in-out 0s 2 alternate;
+}
+
+.klondike-hint-dest {
+  /* Highlight the target pile/card without changing its layout */
+  box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.7); /* soft light-blue ring */
+  border-color: rgba(255, 255, 255, 0.7);
+  animation: klondike-hint-pulse-dest 0.9s ease-in-out 0s 2 alternate;
+}
+
+/* Keep hint styles lightweight on very small screens */
+@media (max-width: 480px) {
+  .klondike-hint-source {
+    outline-width: 2px;
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .klondike-hint-dest {
+    box-shadow: 0 0 0 2px rgba(173, 216, 230, 0.7);
+  }
+}
+
+/* Subtle pulse animations to draw the eye without being annoying */
+@keyframes klondike-hint-pulse-source {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 255, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 255, 0, 1);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(255, 255, 0, 0.7);
+  }
+}
+
+@keyframes klondike-hint-pulse-dest {
+  0% {
+    box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(173, 216, 230, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.6);
+  }
+}
+
 /* No-move feedback for waste pile */
 .klondike-no-move {
   animation: shake 0.15s ease-in-out;
@@ -311,4 +365,93 @@
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-2px); }
   75% { transform: translateX(2px); }
+}
+
+/* Card animation for smooth slide-in (not used for reveals) */
+@keyframes klondike-card-slide-to-target {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Note: pop-in animations removed - reveals now use only flip rotation */
+
+/* Card piles get a subtle transition when updated */
+.klondike-stock-pile,
+.klondike-waste-pile,
+.klondike-foundation {
+  transition: all 0.2s ease;
+}
+
+/* Tableau columns smoothly transition on card addition */
+.klondike-tableau-column {
+  transition: all 0.15s ease;
+}
+
+/* Card movement animations */
+@keyframes klondike-card-move-to-foundation {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes klondike-card-move-to-tableau {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes klondike-card-move-to-waste {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Card flip animation - smooth Y-axis rotation only, no scale/jump */
+@keyframes klondike-card-flip {
+  0% {
+    transform: rotateY(0deg);
+  }
+  50% {
+    transform: rotateY(90deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+.klondike-card-flipping {
+  animation: klondike-card-flip 0.25s ease-in-out forwards !important;
+  perspective: 1000px !important;
+  transform-style: preserve-3d !important;
+  backface-visibility: hidden;
+}
+
+/* Prevent hover transform from interfering with flip animation */
+.klondike-card-flipping:hover {
+  transform: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.klondike-card-moving {
+  position: fixed !important;
+  z-index: 9999 !important;
+  transition: all 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }

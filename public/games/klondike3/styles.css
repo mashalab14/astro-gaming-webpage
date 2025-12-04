@@ -105,6 +105,7 @@
   width: var(--card-width);
   min-height: 120px;
   position: relative;
+  transition: all 0.15s ease;
 }
 
 /* Card styling */
@@ -121,7 +122,7 @@
   box-sizing: border-box;
 }
 
-.klondike-card:hover {
+.klondike-card.klondike-card-face-up:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   border-color: rgba(255, 255, 255, 0.6);
@@ -278,11 +279,7 @@
 }
 
 /* Make cards draggable */
-.klondike-card[draggable="true"] {
-  cursor: move;
-}
-
-.klondike-card[draggable="true"]:hover {
+.klondike-card.klondike-card-face-up[draggable="true"]:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
@@ -368,4 +365,93 @@
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-2px); }
   75% { transform: translateX(2px); }
+}
+
+/* Card animation for smooth slide-in (not used for reveals) */
+@keyframes klondike-card-slide-to-target {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Note: pop-in animations removed - reveals now use only flip rotation */
+
+/* Card piles get a subtle transition when updated */
+.klondike-stock-pile,
+.klondike-waste-pile,
+.klondike-foundation {
+  transition: all 0.2s ease;
+}
+
+/* Tableau columns smoothly transition on card addition */
+.klondike-tableau-column {
+  transition: all 0.15s ease;
+}
+
+/* Card movement animations */
+@keyframes klondike-card-move-to-foundation {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes klondike-card-move-to-tableau {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes klondike-card-move-to-waste {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Card flip animation - smooth Y-axis rotation only, no scale/jump */
+@keyframes klondike-card-flip {
+  0% {
+    transform: rotateY(0deg);
+  }
+  50% {
+    transform: rotateY(90deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+.klondike-card-flipping {
+  animation: klondike-card-flip 0.25s ease-in-out forwards !important;
+  perspective: 1000px !important;
+  transform-style: preserve-3d !important;
+  backface-visibility: hidden;
+}
+
+/* Prevent hover transform from interfering with flip animation */
+.klondike-card-flipping:hover {
+  transform: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.klondike-card-moving {
+  position: fixed !important;
+  z-index: 9999 !important;
+  transition: all 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
