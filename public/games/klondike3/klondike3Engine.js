@@ -319,7 +319,7 @@ class Klondike3Engine {
           // Tableau-specific behaviour
           if (location && location.startsWith('tableau-')) {
             // If this is a tableau card and it is face down, do nothing on click
-            if (!card.classList.contains('klondike-card-face-up')) {
+            if (!card.classList.contains('is-face-up')) {
               return;
             }
 
@@ -413,7 +413,7 @@ class Klondike3Engine {
 
         // Make card draggable if it's face up and not in foundation (or top foundation card)
         const location = card.dataset.location;
-        const isFaceUp = card.classList.contains('klondike-card-face-up');
+        const isFaceUp = card.classList.contains('is-face-up');
         
         if (isFaceUp && this.isCardDraggable(card)) {
           card.draggable = true;
@@ -1611,32 +1611,14 @@ tryMoveTableauToFoundation(colIndex) {
 
     const durations = this.getAnimationDurations();
     
-    // Short-circuit: if animations are disabled, just re-render face-up immediately
+    // Short-circuit: if animations are disabled, just add .is-face-up immediately
     if (!this.animationsEnabled || durations.flipTotalMs === 0) {
-      // Simply update the DOM to show cards face-up without animation
       this.revealedCardIds.forEach(cardId => {
         const cardElement = this.rootElement.querySelector(
           `.klondike-card[data-card-id="${cardId}"][data-location^="tableau-"]`
         );
-        
         if (cardElement) {
-          const card = this.gameState ? 
-            Array.from(this.gameState.tableau.flat()).find(c => c.id === cardId) :
-            null;
-          
-          if (card && card.faceUp) {
-            const suitSymbols = ['♥', '♦', '♣', '♠'];
-            const suitColors = ['red', 'red', 'black', 'black'];
-            const rankNames = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-            
-            cardElement.className = 'klondike-card klondike-card-face-up';
-            cardElement.innerHTML = `
-              <div class="klondike-card-content ${suitColors[card.suit]}">
-                <div class="klondike-card-rank">${rankNames[card.rank]}</div>
-                <div class="klondike-card-suit">${suitSymbols[card.suit]}</div>
-              </div>
-            `;
-          }
+          cardElement.classList.add('is-face-up');
         }
       });
       return;
@@ -1648,50 +1630,24 @@ tryMoveTableauToFoundation(colIndex) {
     this.isFlipAnimating = true;
 
     this.revealedCardIds.forEach(cardId => {
-      // Find the card element in the DOM - it's currently rendered as face-down
+      // Find the card element in the DOM
       const cardElement = this.rootElement.querySelector(
         `.klondike-card[data-card-id="${cardId}"][data-location^="tableau-"]`
       );
       
       if (cardElement) {
-        // Apply flip animation class to trigger the rotation
-        cardElement.classList.add('klondike-card-flipping');
-        // Set dynamic animation duration based on current preset
-        cardElement.style.animationDuration = `${durations.flipTotalMs}ms`;
+        // Set the transition duration dynamically on the inner wrapper
+        const innerElement = cardElement.querySelector('.klondike-card-inner');
+        if (innerElement) {
+          innerElement.style.transition = `transform ${durations.flipTotalMs}ms ease-in-out`;
+        }
         
-        // Midway through the animation, update the card content
-        // The card is now rotated 90 degrees (edge-on), so content swap is invisible
-        setTimeout(() => {
-          // Find the actual card data
-          const card = this.gameState ? 
-            Array.from(this.gameState.tableau.flat()).find(c => c.id === cardId) :
-            null;
-          
-          if (card && card.faceUp) {
-            // Update the card to show face-up content
-            const suitSymbols = ['♥', '♦', '♣', '♠'];
-            const suitColors = ['red', 'red', 'black', 'black'];
-            const rankNames = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-            
-            // Update class and keep the animation running
-            cardElement.className = `klondike-card klondike-card-face-up klondike-card-flipping`;
-            cardElement.innerHTML = `
-              <div class="klondike-card-content ${suitColors[card.suit]}">
-                <div class="klondike-card-rank">${rankNames[card.rank]}</div>
-                <div class="klondike-card-suit">${suitSymbols[card.suit]}</div>
-              </div>
-            `;
-          }
-        }, durations.flipMidpointMs);
+        // Add .is-face-up class to trigger CSS rotation from back (180deg) to front (0deg)
+        cardElement.classList.add('is-face-up');
         
-        // Remove the animation class after it completes
+        // Clear animation flag after flip completes
         setTimeout(() => {
-          cardElement.classList.remove('klondike-card-flipping');
-          
-          // Decrement pending flips counter
           pendingFlips--;
-          
-          // Clear animation flag only when all flips are complete
           if (pendingFlips === 0) {
             this.isFlipAnimating = false;
           }
@@ -1717,8 +1673,20 @@ tryMoveTableauToFoundation(colIndex) {
     stockPile.innerHTML = '';
     if (this.gameState.stock.length > 0) {
       const stockCard = document.createElement('div');
-      stockCard.className = 'klondike-card klondike-card-back';
-      stockCard.innerHTML = '<div class="klondike-card-back-pattern">🂠</div>';
+      stockCard.className = 'klondike-card'; // No .is-face-up = shows back
+      stockCard.innerHTML = `
+        <div class="klondike-card-inner">
+          <div class="klondike-card-face klondike-card-face-back">
+            <div class="klondike-card-back-pattern">🂠</div>
+          </div>
+          <div class="klondike-card-face klondike-card-face-front">
+            <div class="klondike-card-content">
+              <div class="klondike-card-rank"></div>
+              <div class="klondike-card-suit"></div>
+            </div>
+          </div>
+        </div>
+      `;
       stockPile.appendChild(stockCard);
     } else {
       stockPile.innerHTML = '<div class="klondike-card-placeholder">↻</div>';
@@ -1798,25 +1766,30 @@ tryMoveTableauToFoundation(colIndex) {
    * Create a visual card element
    */
   createCardElement(card, location) {
+    const suitSymbols = ['♥', '♦', '♣', '♠'];
+    const suitColors = ['red', 'red', 'black', 'black'];
+    const rankNames = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    
     const cardElement = document.createElement('div');
-    cardElement.className = `klondike-card ${card.faceUp ? 'klondike-card-face-up' : 'klondike-card-back'}`;
+    // Add .is-face-up class if card is face up in game state
+    cardElement.className = `klondike-card${card.faceUp ? ' is-face-up' : ''}`;
     cardElement.dataset.cardId = card.id;
     cardElement.dataset.location = location;
 
-    if (card.faceUp) {
-      const suitSymbols = ['♥', '♦', '♣', '♠'];
-      const suitColors = ['red', 'red', 'black', 'black'];
-      const rankNames = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-      
-      cardElement.innerHTML = `
-        <div class="klondike-card-content ${suitColors[card.suit]}">
-          <div class="klondike-card-rank">${rankNames[card.rank]}</div>
-          <div class="klondike-card-suit">${suitSymbols[card.suit]}</div>
+    // Two-face structure: both back and front always present
+    cardElement.innerHTML = `
+      <div class="klondike-card-inner">
+        <div class="klondike-card-face klondike-card-face-back">
+          <div class="klondike-card-back-pattern">🂠</div>
         </div>
-      `;
-    } else {
-      cardElement.innerHTML = '<div class="klondike-card-back-pattern">🂠</div>';
-    }
+        <div class="klondike-card-face klondike-card-face-front">
+          <div class="klondike-card-content ${suitColors[card.suit]}">
+            <div class="klondike-card-rank">${rankNames[card.rank]}</div>
+            <div class="klondike-card-suit">${suitSymbols[card.suit]}</div>
+          </div>
+        </div>
+      </div>
+    `;
 
     return cardElement;
   }
