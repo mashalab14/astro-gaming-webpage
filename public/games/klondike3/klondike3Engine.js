@@ -23,6 +23,9 @@ class Klondike3Engine {
     // Track cards revealed in the last move for flip animation
     this.revealedCardIds = new Set();
     
+    // Track metadata for last move to enable undo animations
+    this.lastMoveMeta = null;
+    
     // Central animation speed system (single source of truth)
     this.animationSpeedPreset = "normal"; // "slow" | "normal" | "fast"
     this.animationBaseMs = 80; // Base unit for normal preset
@@ -1291,6 +1294,15 @@ tryMoveTableauToFoundation(colIndex) {
         // Scoring: -15 for moving from foundation to tableau
         this.gameState.score -= 15;
         
+        // Store move metadata for undo animations
+        this.lastMoveMeta = {
+          type: 'foundation-to-tableau',
+          fromLocation: `foundation-${foundationIndex}`,
+          toLocation: `tableau-${col}`,
+          movedCardIds: [card.id],
+          flippedCardId: null
+        };
+        
         this.registerMove();
         // Animate the card movement before updating display
         const foundationCard = this.rootElement.querySelector(`#foundation-${foundationIndex} .klondike-card`);
@@ -1361,6 +1373,8 @@ tryMoveTableauToFoundation(colIndex) {
     // entire move (even if it moves a whole stack).
     this.captureUndoSnapshot();
     
+    let flippedCardId = null;
+    
     // Remove cards from source
     if (fromLocation === 'waste') {
       if (cards.length === 1 && this.gameState.waste.length > 0) {
@@ -1386,6 +1400,7 @@ tryMoveTableauToFoundation(colIndex) {
       if (fromColumn.length > 0 && !fromColumn[fromColumn.length - 1].faceUp) {
         const revealedCard = fromColumn[fromColumn.length - 1];
         revealedCard.faceUp = true;
+        flippedCardId = revealedCard.id;
         // Track this card for flip animation
         this.revealedCardIds.add(revealedCard.id);
         // Scoring: +5 for revealing a card
@@ -1395,6 +1410,24 @@ tryMoveTableauToFoundation(colIndex) {
     
     // Add cards to destination
     this.gameState.tableau[toColIndex].push(...cards);
+    
+    // Store move metadata for undo animations
+    let moveType;
+    if (fromLocation === 'waste') {
+      moveType = 'waste-to-tableau';
+    } else if (fromLocation.startsWith('foundation-')) {
+      moveType = 'foundation-to-tableau';
+    } else {
+      moveType = 'tableau-to-tableau';
+    }
+    
+    this.lastMoveMeta = {
+      type: moveType,
+      fromLocation,
+      toLocation: `tableau-${toColIndex}`,
+      movedCardIds: cards.map(c => c.id),
+      flippedCardId
+    };
     
     this.registerMove();
     return true;
@@ -1412,6 +1445,8 @@ tryMoveTableauToFoundation(colIndex) {
     // including score changes and any card flips.
     this.captureUndoSnapshot();
     
+    let flippedCardId = null;
+    
     // Remove card from source
     if (fromLocation === 'waste') {
       if (this.gameState.waste.length > 0) {
@@ -1427,6 +1462,7 @@ tryMoveTableauToFoundation(colIndex) {
         if (column.length > 0 && !column[column.length - 1].faceUp) {
           const revealedCard = column[column.length - 1];
           revealedCard.faceUp = true;
+          flippedCardId = revealedCard.id;
           // Track this card for flip animation
           this.revealedCardIds.add(revealedCard.id);
           // Scoring: +5 for revealing a card
@@ -1440,6 +1476,15 @@ tryMoveTableauToFoundation(colIndex) {
     
     // Scoring: +10 for moving to foundation
     this.gameState.score += 10;
+    
+    // Store move metadata for undo animations
+    this.lastMoveMeta = {
+      type: fromLocation === 'waste' ? 'waste-to-foundation' : 'tableau-to-foundation',
+      fromLocation,
+      toLocation: `foundation-${foundationIndex}`,
+      movedCardIds: [card.id],
+      flippedCardId
+    };
     
     this.registerMove();
     this.checkWinCondition();
@@ -1514,31 +1559,71 @@ tryMoveTableauToFoundation(colIndex) {
       return false;
     }
 
-    const previousState = undoManager.undo();
-    if (!previousState) {
-      return false;
+    // Check if we have move metadata and animations are enabled
+    const hasMoveMeta = this.lastMoveMeta && this.lastMoveMeta.movedCardIds && this.lastMoveMeta.movedCardIds.length > 0;
+    const shouldAnimate = hasMoveMeta && this.animationsEnabled;
+
+    if (!shouldAnimate) {
+      // No animation path: instant undo
+      const previousState = undoManager.undo();
+      if (!previousState) {
+        return false;
+      }
+
+      this.gameState = previousState;
+      this.clearHintHighlight();
+      this.currentHint = null;
+      this.lastMoveMeta = null;
+      this.updateDisplay(0);
+
+      if (this.callbacks && typeof this.callbacks.onMove === 'function') {
+        this.callbacks.onMove({
+          moves: this.gameState.moveCount,
+          score: this.gameState.score,
+          stockCount: this.gameState.stock.length
+        });
+      }
+
+      return true;
     }
 
-    // Replace the current game state with the restored snapshot.
-    this.gameState = previousState;
+    // Animated undo path: reverse animations first, then apply logical undo
+    const meta = this.lastMoveMeta;
+    
+    // Step 1: If a card was flipped face-up during the forward move, flip it back down
+    const flipDownPromise = meta.flippedCardId 
+      ? this.animateCardFlipDown(meta.flippedCardId)
+      : Promise.resolve();
 
-    // Undo changes the board to a prior snapshot, so any previous hint is invalid.
-    // Clear hint visuals and reset the stored hint move before re-rendering.
-    this.clearHintHighlight();
-    this.currentHint = null;
+    // Step 2: After flip-down completes, animate the moved card back
+    flipDownPromise.then(() => {
+      // Animate the top moved card from toLocation back to fromLocation
+      const topCardId = meta.movedCardIds[0];
+      return this.animateReversedMove(meta.toLocation, meta.fromLocation, topCardId);
+    }).then(() => {
+      // Step 3: After animations complete, perform logical undo
+      const previousState = undoManager.undo();
+      if (!previousState) {
+        return false;
+      }
 
-    // Re-render all piles so the UI matches the restored data.
-    this.updateDisplay(0);
+      this.gameState = previousState;
+      this.clearHintHighlight();
+      this.currentHint = null;
+      this.lastMoveMeta = null;
 
-    // Keep the shell HUD in sync. We reuse the existing onMove callback,
-    // using the restored state's counters.
-    if (this.callbacks && typeof this.callbacks.onMove === 'function') {
-      this.callbacks.onMove({
-        moves: this.gameState.moveCount,
-        score: this.gameState.score,
-        stockCount: this.gameState.stock.length
-      });
-    }
+      // Re-render to match the restored state
+      this.updateDisplay(0);
+
+      // Sync shell HUD
+      if (this.callbacks && typeof this.callbacks.onMove === 'function') {
+        this.callbacks.onMove({
+          moves: this.gameState.moveCount,
+          score: this.gameState.score,
+          stockCount: this.gameState.stock.length
+        });
+      }
+    });
 
     return true;
   }
@@ -1843,11 +1928,37 @@ tryMoveTableauToFoundation(colIndex) {
 
       // Get bounding rectangles
       const sourceRect = sourceElement.getBoundingClientRect();
-      const destRect = destElement.getBoundingClientRect();
 
       // Calculate the offset needed to move from source to dest
-      const offsetX = destRect.left - sourceRect.left;
-      const offsetY = destRect.top - sourceRect.top;
+      let offsetX, offsetY;
+      
+      // Check if destination is a tableau column
+      if (destElement.id && destElement.id.startsWith('tableau-')) {
+        // For tableau columns, compute the exact future stacked position
+        const columnRect = destElement.getBoundingClientRect();
+        const cardsInColumn = destElement.querySelectorAll('.klondike-card');
+        const verticalOffset = 20; // Same spacing as used in updateTableau
+        let targetLeft;
+        let targetTop;
+        if (cardsInColumn.length === 0) {
+          // Empty column: target the column's top-left (first card position)
+          targetLeft = columnRect.left;
+          targetTop = columnRect.top;
+        } else {
+          // Non-empty column: target directly below the current top card
+          const lastCardElement = cardsInColumn[cardsInColumn.length - 1];
+          const lastCardRect = lastCardElement.getBoundingClientRect();
+          targetLeft = lastCardRect.left;
+          targetTop = lastCardRect.top + verticalOffset;
+        }
+        offsetX = targetLeft - sourceRect.left;
+        offsetY = targetTop - sourceRect.top;
+      } else {
+        // For foundations and other destinations, use the element's position
+        const destRect = destElement.getBoundingClientRect();
+        offsetX = destRect.left - sourceRect.left;
+        offsetY = destRect.top - sourceRect.top;
+      }
 
       // Hide the source element immediately - it's being moved
       sourceElement.style.opacity = '0';
@@ -1907,6 +2018,76 @@ tryMoveTableauToFoundation(colIndex) {
       return this.rootElement.querySelector(`#${toLocation}`);
     }
     return null;
+  }
+
+  /**
+   * Animate a card flipping from face-up back to face-down (for undo)
+   * @param {string} cardId - The card ID to flip down
+   * @returns {Promise} Resolves when flip animation completes
+   */
+  animateCardFlipDown(cardId) {
+    return new Promise((resolve) => {
+      const cardElement = this.rootElement.querySelector(
+        `.klondike-card[data-card-id="${cardId}"][data-location^="tableau-"]`
+      );
+      
+      if (!cardElement) {
+        resolve();
+        return;
+      }
+      
+      const durations = this.getAnimationDurations();
+      
+      // Short-circuit: if animations disabled, remove class immediately
+      if (!this.animationsEnabled || durations.flipTotalMs === 0) {
+        cardElement.classList.remove('is-face-up');
+        resolve();
+        return;
+      }
+      
+      // Set animation flag
+      this.isFlipAnimating = true;
+      
+      // Set transition duration on inner element
+      const innerElement = cardElement.querySelector('.klondike-card-inner');
+      if (innerElement) {
+        innerElement.style.transition = `transform ${durations.flipTotalMs}ms ease-in-out`;
+      }
+      
+      // Remove .is-face-up to trigger CSS rotation back to 180deg (face-down)
+      cardElement.classList.remove('is-face-up');
+      
+      // Clear animation flag after flip completes
+      setTimeout(() => {
+        this.isFlipAnimating = false;
+        resolve();
+      }, durations.flipTotalMs);
+    });
+  }
+
+  /**
+   * Animate a card moving in reverse (for undo)
+   * @param {string} fromLocation - Where the card currently is
+   * @param {string} toLocation - Where it should move back to
+   * @param {string} cardId - The card ID to animate
+   * @returns {Promise} Resolves when movement animation completes
+   */
+  animateReversedMove(fromLocation, toLocation, cardId) {
+    // Find source element (where card currently is)
+    // Use only data-card-id for robust lookup, since card IDs are unique
+    const sourceElement = this.rootElement.querySelector(
+      `.klondike-card[data-card-id="${cardId}"]`
+    );
+    
+    // Find destination element (where it should go back to)
+    const destElement = this.getDestinationElement(toLocation);
+    
+    if (!sourceElement || !destElement) {
+      return Promise.resolve();
+    }
+    
+    // Reuse existing animateCardMovement - it handles all the visual logic
+    return this.animateCardMovement(sourceElement, destElement);
   }
 }
 
