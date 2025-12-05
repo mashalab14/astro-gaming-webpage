@@ -994,6 +994,13 @@ class Klondike3Engine {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', cardId);
     
+    // Hide native drag ghost - create 1x1 transparent image
+    if (!this.transparentDragImage) {
+      this.transparentDragImage = document.createElement('img');
+      this.transparentDragImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    }
+    e.dataTransfer.setDragImage(this.transparentDragImage, 0, 0);
+    
     // If dragging from tableau, create visual stack and hide original cards
     if (location.startsWith('tableau-')) {
       const colIndex = parseInt(location.split('-')[1]);
@@ -1004,6 +1011,7 @@ class Klondike3Engine {
         this.dragData.draggedCards = column.slice(cardIndex);
         this.dragData.colIndex = colIndex;
         this.dragData.cardIndex = cardIndex;
+        this.dragData.sourceType = 'tableau';
         
         // Create floating drag stack
         this.createFloatingDragStack(e, this.dragData.draggedCards);
@@ -1011,11 +1019,34 @@ class Klondike3Engine {
         // Hide original cards in the tableau column
         this.hideTableauCards(colIndex, cardIndex);
       }
-    } else {
-      // Single card from waste or foundation - use existing behavior
-      cardElement.classList.add('dragging');
+    } else if (location === 'waste') {
+      // Waste card drag - unified floating stack behavior
       const card = this.findCardById(cardId);
-      this.dragData.draggedCards = card ? [card] : [];
+      if (card) {
+        this.dragData.draggedCards = [card];
+        this.dragData.sourceType = 'waste';
+        
+        // Create floating drag stack
+        this.createFloatingDragStack(e, this.dragData.draggedCards);
+        
+        // Hide original waste card
+        this.hideNonTableauCard(cardElement);
+      }
+    } else if (location.startsWith('foundation-')) {
+      // Foundation card drag - unified floating stack behavior
+      const foundationIndex = parseInt(location.split('-')[1]);
+      const card = this.findCardById(cardId);
+      if (card) {
+        this.dragData.draggedCards = [card];
+        this.dragData.sourceType = 'foundation';
+        this.dragData.foundationIndex = foundationIndex;
+        
+        // Create floating drag stack
+        this.createFloatingDragStack(e, this.dragData.draggedCards);
+        
+        // Hide original foundation card
+        this.hideNonTableauCard(cardElement);
+      }
     }
   }
 
@@ -1134,6 +1165,35 @@ class Klondike3Engine {
   }
 
   /**
+   * Hide a non-tableau card (waste or foundation) during drag
+   */
+  hideNonTableauCard(cardElement) {
+    if (!cardElement) return;
+    cardElement.style.opacity = '0';
+    cardElement.classList.add('klondike-card-hidden-for-drag');
+  }
+
+  /**
+   * Restore visibility of a non-tableau card (waste or foundation)
+   */
+  restoreNonTableauCard(cardId, sourceType, foundationIndex) {
+    let selector;
+    if (sourceType === 'waste') {
+      selector = `#waste-pile .klondike-card[data-card-id="${cardId}"]`;
+    } else if (sourceType === 'foundation') {
+      selector = `#foundation-${foundationIndex} .klondike-card[data-card-id="${cardId}"]`;
+    }
+    
+    if (selector) {
+      const cardElement = this.rootElement.querySelector(selector);
+      if (cardElement && cardElement.classList.contains('klondike-card-hidden-for-drag')) {
+        cardElement.style.opacity = '';
+        cardElement.classList.remove('klondike-card-hidden-for-drag');
+      }
+    }
+  }
+
+  /**
    * Clean up all drag-related visuals
    */
   cleanupDragVisuals(success) {
@@ -1142,18 +1202,25 @@ class Klondike3Engine {
     // Clean up floating stack
     this.removeFloatingDragStack();
     
-    // Handle tableau drag cleanup
-    if (this.dragData.location && this.dragData.location.startsWith('tableau-')) {
+    // Handle cleanup based on source type
+    if (this.dragData.sourceType === 'tableau') {
       if (!success) {
         // Failed drop - restore original cards visibility
         this.restoreTableauCards(this.dragData.colIndex, this.dragData.cardIndex);
       }
       // On successful drop, updateDisplay() will recreate the DOM properly
-    } else {
-      // Non-tableau drag - clean up dragging class
-      if (this.dragData.element) {
-        this.dragData.element.classList.remove('dragging');
+    } else if (this.dragData.sourceType === 'waste') {
+      if (!success) {
+        // Failed drop - restore original waste card visibility
+        this.restoreNonTableauCard(this.dragData.cardId, 'waste', null);
       }
+      // On successful drop, updateStockAndWaste() will re-render waste
+    } else if (this.dragData.sourceType === 'foundation') {
+      if (!success) {
+        // Failed drop - restore original foundation card visibility
+        this.restoreNonTableauCard(this.dragData.cardId, 'foundation', this.dragData.foundationIndex);
+      }
+      // On successful drop, updateFoundations() will re-render foundation
     }
     
     this.dragData = null;

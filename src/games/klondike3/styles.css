@@ -298,12 +298,6 @@
 }
 
 /* Drag and Drop Styles */
-.klondike-card.dragging {
-  opacity: 0.5;
-  transform: rotate(5deg);
-  z-index: 1000;
-}
-
 .klondike-card-selected {
   outline: none;
   box-shadow: none;
